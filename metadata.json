@@ -1,0 +1,6 @@
+{
+  "name": "Our Balagarh — Civic Information Portal & Dynamic CMS",
+  "description": "Bilingual civic information portal and full-featured database-driven Content Management System for Balagarh Block, Hooghly, West Bengal.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

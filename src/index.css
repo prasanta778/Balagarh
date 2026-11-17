@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-display: 'Plus Jakarta Sans', 'Noto Sans Bengali', system-ui, sans-serif;
+    --font-body: 'DM Sans', 'Noto Sans Bengali', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  body {
+    font-family: var(--font-body);
+    color: #0f172a;
+    background-color: #f4f7fb;
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: var(--font-display);
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.prose-balagarh h2 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: #0f172a;
+}
+
+.prose-balagarh h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.4rem;
+  color: #1e293b;
+}
+
+.prose-balagarh p {
+  margin-bottom: 0.75rem;
+  line-height: 1.7;
+  color: #334155;
+}
+
+.prose-balagarh ul {
+  list-style-type: disc;
+  padding-left: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.prose-balagarh li {
+  margin-bottom: 0.25rem;
+  color: #334155;
+}
+
+@keyframes balagarhMarquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.balagarh-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: balagarhMarquee 90s linear infinite;
+}
+
+.balagarh-marquee-wrapper:hover .balagarh-marquee-track {
+  animation-play-state: paused;
+}
+
+@keyframes heroKenBurns {
+  0% {
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+  50% {
+    transform: scale(1.1) translate3d(-1.8%, -1.2%, 0);
+  }
+  100% {
+    transform: scale(1.03) translate3d(1.2%, 0.8%, 0);
+  }
+}
+
+.animate-hero-motion {
+  animation: heroKenBurns 18s ease-in-out infinite alternate;
+}
+
+.animate-hero-motion-paused {
+  animation: heroKenBurns 18s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+
