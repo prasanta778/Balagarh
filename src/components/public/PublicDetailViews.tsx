@@ -5,6 +5,13 @@ import {
 } from 'lucide-react';
 import type { ContentCategory, ContentItem, ContentSection, EventItem, Language } from '../../types/cms';
 import { apiFetch } from '../../lib/api';
+import {
+  getFallbackContentDetail,
+  getFallbackEventDetail,
+  getFallbackEvents,
+  getFallbackSearch,
+  getFallbackSection,
+} from '../../lib/staticFallback';
 import { bi, extractDateBadge, formatDateTime, getEmbedVideoUrl } from '../../lib/i18n';
 import { SmartImage } from '../SmartImage';
 import { DynamicIcon } from '../DynamicIcon';
@@ -49,7 +56,14 @@ export const PublicSectionView: React.FC<{
         setItems(res.items);
         setTotalPages(res.pagination.totalPages);
       })
-      .catch(() => {})
+      .catch(async () => {
+        const fb = await getFallbackSection(slug, page, 12, selectedCat, search);
+        if (!active || !fb) return;
+        setSection(fb.section);
+        setCategories(fb.categories);
+        setItems(fb.items);
+        setTotalPages(fb.pagination.totalPages);
+      })
       .finally(() => active && setLoading(false));
     return () => { active = false; };
   }, [slug, page, selectedCat, search]);
@@ -265,7 +279,16 @@ export const PublicContentDetailView: React.FC<{
         setItem(res.item);
         setRelated(res.related);
       })
-      .catch((err) => active && setError(err instanceof Error ? err.message : 'Not found'))
+      .catch(async (err) => {
+        const fb = await getFallbackContentDetail(contentId);
+        if (!active) return;
+        if (fb) {
+          setItem(fb.item);
+          setRelated(fb.related);
+        } else {
+          setError(err instanceof Error ? err.message : 'Not found');
+        }
+      })
       .finally(() => active && setLoading(false));
     return () => { active = false; };
   }, [contentId]);
@@ -340,7 +363,14 @@ export const PublicContentDetailView: React.FC<{
                   />
                 </div>
               ) : (
-                <video src={item.video_url} controls className="w-full rounded-xl border border-slate-200 bg-black" />
+                <video
+                  src={item.video_url}
+                  poster={item.cover_url || undefined}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  className="w-full rounded-xl border border-slate-200 bg-black"
+                />
               )}
             </div>
           )}
@@ -478,6 +508,15 @@ export const PublicEventsView: React.FC<{
           if (found) setDetailEvent(found);
         }
       })
+      .catch(async () => {
+        const fb = await getFallbackEvents(tab);
+        if (!active || !fb) return;
+        setEvents(fb.events);
+        if (selectedEventId) {
+          const found = fb.events.find((e) => e.id === selectedEventId);
+          if (found) setDetailEvent(found);
+        }
+      })
       .finally(() => active && setLoading(false));
     return () => { active = false; };
   }, [tab, selectedEventId]);
@@ -486,7 +525,10 @@ export const PublicEventsView: React.FC<{
     if (selectedEventId) {
       apiFetch<{ event: EventItem }>(`/api/public/events/${selectedEventId}`)
         .then((res) => setDetailEvent(res.event))
-        .catch(() => {});
+        .catch(async () => {
+          const fb = await getFallbackEventDetail(selectedEventId);
+          if (fb) setDetailEvent(fb.event);
+        });
     } else {
       setDetailEvent(null);
     }
@@ -573,10 +615,21 @@ export const PublicEventsView: React.FC<{
               </a>
             )}
 
-            {embedUrl && (
-              <div className="aspect-video rounded-xl overflow-hidden border border-slate-200 bg-black">
-                <iframe src={embedUrl} title={detailEvent.title_en} className="w-full h-full" allowFullScreen />
-              </div>
+            {detailEvent.video_url && (
+              embedUrl ? (
+                <div className="aspect-video rounded-xl overflow-hidden border border-slate-200 bg-black">
+                  <iframe src={embedUrl} title={detailEvent.title_en} className="w-full h-full" allowFullScreen />
+                </div>
+              ) : (
+                <video
+                  src={detailEvent.video_url}
+                  poster={detailEvent.cover_url || undefined}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  className="w-full rounded-xl border border-slate-200 bg-black"
+                />
+              )
             )}
 
             {detailEvent.gallery && detailEvent.gallery.length > 0 && (
@@ -696,6 +749,10 @@ export const PublicSearchView: React.FC<{
     setLoading(true);
     apiFetch<{ contents: ContentItem[]; events: EventItem[] }>(`/api/public/search?q=${encodeURIComponent(query)}`)
       .then((res) => active && setResults(res))
+      .catch(async () => {
+        const fb = await getFallbackSearch(query);
+        if (active && fb) setResults(fb);
+      })
       .finally(() => active && setLoading(false));
     return () => { active = false; };
   }, [query]);

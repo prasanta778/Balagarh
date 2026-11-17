@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Check, FileText, FolderOpen, Image as ImageIcon, RefreshCw, Search,
+  Check, DownloadCloud, FileText, FolderOpen, Globe, Image as ImageIcon, RefreshCw, Search,
   Trash2, UploadCloud, Video, X, AlertTriangle, Edit3,
 } from 'lucide-react';
 import type { Language, MediaRecord } from '../../types/cms';
@@ -24,6 +24,8 @@ export const MediaLibraryView: React.FC<MediaLibraryViewProps> = ({ lang, canUpl
   const [search, setSearch] = useState('');
   const [uploadFolder, setUploadFolder] = useState('general');
   const [uploading, setUploading] = useState(false);
+  const [remoteUrl, setRemoteUrl] = useState('');
+  const [importingUrl, setImportingUrl] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [editing, setEditing] = useState<MediaRecord | null>(null);
   const [deleteConflict, setDeleteConflict] = useState<{ media: MediaRecord; usage: { total: number; contents: Array<{ title_en: string }>; galleries: Array<{ title_en: string }>; events: Array<{ title_en: string }>; banners: Array<{ title_en: string }> } } | null>(null);
@@ -55,6 +57,26 @@ export const MediaLibraryView: React.FC<MediaLibraryViewProps> = ({ lang, canUpl
       setFeedback({ type: 'err', msg: err instanceof Error ? err.message : 'Upload failed' });
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleImportFromUrl = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!remoteUrl.trim()) return;
+    setImportingUrl(true);
+    setFeedback(null);
+    try {
+      const res = await apiFetch<{ media: MediaRecord }>('/api/admin/media/import-url', {
+        method: 'POST',
+        body: JSON.stringify({ url: remoteUrl.trim(), folder: uploadFolder }),
+      });
+      setRemoteUrl('');
+      setFeedback({ type: 'ok', msg: `Downloaded & saved "${res.media.original_name}" (${res.media.media_type}) locally into Media Library.` });
+      loadMedia();
+    } catch (err) {
+      setFeedback({ type: 'err', msg: err instanceof Error ? err.message : 'Failed to download from web URL' });
+    } finally {
+      setImportingUrl(false);
     }
   };
 
@@ -173,55 +195,80 @@ export const MediaLibraryView: React.FC<MediaLibraryViewProps> = ({ lang, canUpl
         </div>
       )}
 
-      {/* Drag & Drop Multi-File Upload */}
+      {/* Drag & Drop Multi-File Upload + Download from Web URL */}
       {canUpload && (
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragOver(false);
-            handleUploadFiles(e.dataTransfer.files);
-          }}
-          className={`rounded-xl border-2 border-dashed p-5 transition-colors flex flex-col sm:flex-row items-center justify-between gap-4 ${
-            dragOver ? 'border-blue-600 bg-blue-50' : 'border-slate-300 bg-white'
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center shrink-0">
-              <UploadCloud className="w-6 h-6" />
+        <div className="space-y-3">
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              handleUploadFiles(e.dataTransfer.files);
+            }}
+            className={`rounded-xl border-2 border-dashed p-5 transition-colors flex flex-col sm:flex-row items-center justify-between gap-4 ${
+              dragOver ? 'border-blue-600 bg-blue-50' : 'border-slate-300 bg-white'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center shrink-0">
+                <UploadCloud className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="text-sm font-bold text-slate-900">
+                  Drag & drop multiple images, videos, or PDF/DOC files here
+                </div>
+                <div className="text-xs text-slate-500">
+                  Validated MIME types only (.jpg, .png, .webp, .mp4, .webm, .pdf, .docx up to 15 MB). PHP & executable files are strictly blocked.
+                </div>
+              </div>
             </div>
-            <div>
-              <div className="text-sm font-bold text-slate-900">
-                Drag & drop multiple images, videos, or PDF/DOC files here
-              </div>
-              <div className="text-xs text-slate-500">
-                Validated MIME types only (.jpg, .png, .webp, .mp4, .pdf, .docx up to 15 MB). PHP & executable files are strictly blocked.
-              </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <select
+                value={uploadFolder}
+                onChange={(e) => setUploadFolder(e.target.value)}
+                className="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold bg-slate-50"
+              >
+                {FOLDERS.filter((f) => f !== 'all').map((f) => (
+                  <option key={f} value={f}>Folder: {f}</option>
+                ))}
+              </select>
+              <label className="cursor-pointer px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors">
+                <span>{uploading ? 'Uploading...' : 'Select Files'}</span>
+                <input
+                  type="file"
+                  multiple
+                  accept=".jpg,.jpeg,.png,.webp,.gif,.mp4,.webm,.pdf,.doc,.docx"
+                  onChange={(e) => handleUploadFiles(e.target.files)}
+                  className="hidden"
+                />
+              </label>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <select
-              value={uploadFolder}
-              onChange={(e) => setUploadFolder(e.target.value)}
-              className="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold bg-slate-50"
+          <form onSubmit={handleImportFromUrl} className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="flex items-center gap-2.5 text-slate-700 shrink-0">
+              <Globe className="w-5 h-5 text-emerald-600" />
+              <span className="text-xs font-bold">Download from Web &amp; Save Locally:</span>
+            </div>
+            <input
+              type="url"
+              required
+              value={remoteUrl}
+              onChange={(e) => setRemoteUrl(e.target.value)}
+              placeholder="Paste image or video URL (https://... .jpg, .png, .mp4, .webm)"
+              className="flex-1 px-3 py-2 rounded-lg border border-slate-300 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            <button
+              type="submit"
+              disabled={importingUrl}
+              className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 shrink-0"
             >
-              {FOLDERS.filter((f) => f !== 'all').map((f) => (
-                <option key={f} value={f}>Folder: {f}</option>
-              ))}
-            </select>
-            <label className="cursor-pointer px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors">
-              <span>{uploading ? 'Uploading...' : 'Select Files'}</span>
-              <input
-                type="file"
-                multiple
-                accept=".jpg,.jpeg,.png,.webp,.gif,.mp4,.webm,.pdf,.doc,.docx"
-                onChange={(e) => handleUploadFiles(e.target.files)}
-                className="hidden"
-              />
-            </label>
-          </div>
+              <DownloadCloud className="w-4 h-4" />
+              <span>{importingUrl ? 'Downloading...' : 'Download & Save'}</span>
+            </button>
+          </form>
         </div>
       )}
 
@@ -233,10 +280,14 @@ export const MediaLibraryView: React.FC<MediaLibraryViewProps> = ({ lang, canUpl
               {m.media_type === 'image' ? (
                 <SmartImage src={m.url} alt={m.alt_text || m.original_name} className="w-full h-full object-cover" />
               ) : m.media_type === 'video' ? (
-                <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 text-white">
-                  <Video className="w-8 h-8 text-sky-400" />
-                  <span className="text-xs mt-1">{m.mime_type}</span>
-                </div>
+                <video
+                  src={m.url}
+                  controls
+                  muted
+                  playsInline
+                  preload="metadata"
+                  className="w-full h-full object-cover bg-slate-900"
+                />
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center bg-amber-50 text-amber-800">
                   <FileText className="w-8 h-8" />

@@ -51,6 +51,11 @@ export async function apiFetch<T>(url: string, options: RequestInit = {}): Promi
     res = await fetch(url, { ...options, headers });
   }
 
+  const contentType = (res.headers.get('content-type') || '').toLowerCase();
+  if (!contentType.includes('application/json')) {
+    throw new Error(`Unexpected non-JSON response (${res.status})`);
+  }
+
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(data.error || `Request failed (${res.status})`);

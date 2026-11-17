@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { Language, UserRecord } from './types/cms';
 import { apiFetch, clearSessionTokens, getAuthToken } from './lib/api';
+import { getBundledBootstrap, getFallbackBootstrap } from './lib/staticFallback';
 import { PublicHome, PublicLayout, type PublicBootstrapData } from './components/public/PublicPortal';
 import {
   PublicContentDetailView,
@@ -16,7 +17,7 @@ export default function App() {
   const [lang, setLang] = useState<Language>('en');
   const [fontScale, setFontScale] = useState<number>(100);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [bootstrap, setBootstrap] = useState<PublicBootstrapData | null>(null);
+  const [bootstrap, setBootstrap] = useState<PublicBootstrapData>(() => getBundledBootstrap());
   const [adminUser, setAdminUser] = useState<UserRecord | null>(null);
   const [checkingAuth, setCheckingAuth] = useState<boolean>(true);
 
@@ -35,7 +36,10 @@ export default function App() {
   const loadBootstrap = () => {
     apiFetch<PublicBootstrapData>('/api/public/bootstrap')
       .then((res) => setBootstrap(res))
-      .catch(() => {});
+      .catch(async () => {
+        const fallback = await getFallbackBootstrap();
+        if (fallback) setBootstrap(fallback);
+      });
   };
 
   useEffect(() => {

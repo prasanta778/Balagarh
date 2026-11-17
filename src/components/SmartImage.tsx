@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Image as ImageIcon } from 'lucide-react';
 
 interface SmartImageProps {
@@ -8,8 +8,15 @@ interface SmartImageProps {
   fallbackTitle?: string;
 }
 
+const isVideoSrc = (url?: string | null) =>
+  Boolean(url && /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(url));
+
 export const SmartImage: React.FC<SmartImageProps> = ({ src, alt, className = '', fallbackTitle }) => {
   const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [src]);
 
   if (!src || failed) {
     return (
@@ -21,6 +28,20 @@ export const SmartImage: React.FC<SmartImageProps> = ({ src, alt, className = ''
         <ImageIcon className="w-7 h-7 mb-1.5 opacity-60" />
         {fallbackTitle && <span className="text-xs font-medium line-clamp-2">{fallbackTitle}</span>}
       </div>
+    );
+  }
+
+  if (isVideoSrc(src)) {
+    return (
+      <video
+        src={src}
+        autoPlay
+        muted
+        loop
+        playsInline
+        onError={() => setFailed(true)}
+        className={className}
+      />
     );
   }
 

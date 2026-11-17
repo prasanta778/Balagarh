@@ -1,0 +1,10 @@
+{
+  "functions": {
+    "api/**/*.ts": {
+      "includeFiles": "{storage,uploads,public/data}/**"
+    }
+  },
+  "rewrites": [
+    { "source": "/((?!api/|uploads/|assets/|data/).*)", "destination": "/index.html" }
+  ]
+}

@@ -233,7 +233,7 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
               <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-500 via-sky-500 to-amber-400 p-0.5 shadow-md shrink-0">
                 <div className="w-full h-full rounded-full bg-white overflow-hidden">
                   <img
-                    src="/src/assets/images/balagarh_hero_heritage_1794933203220.jpg"
+                    src="/uploads/guptipara_terracotta_temple.jpg"
                     alt="Our Balagarh Crest"
                     className="w-full h-full object-cover"
                   />
@@ -449,7 +449,7 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
           <div className="lg:col-span-1 space-y-2.5">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-full overflow-hidden border-2 border-amber-400 shrink-0">
-                <img src="/src/assets/images/balagarh_hero_heritage_1794933203220.jpg" alt="Our Balagarh" className="w-full h-full object-cover" />
+                <img src="/uploads/guptipara_terracotta_temple.jpg" alt="Our Balagarh" className="w-full h-full object-cover" />
               </div>
               <div>
                 <div className="font-extrabold text-white text-base leading-tight">
@@ -592,6 +592,8 @@ const HeroVideoBackdrop: React.FC<{
       <video
         ref={videoRef}
         src={mediaUrl}
+        poster="/uploads/hooghly_river_boats.jpg"
+        preload="auto"
         autoPlay
         muted
         loop
@@ -688,14 +690,14 @@ export const PublicHome: React.FC<PublicHomeProps> = ({ data, lang, onNavigate }
     .sort((a, b) => a.sort_order - b.sort_order);
 
   const exploreCards = [
-    { en: 'Panchayats', bn: 'পঞ্চায়েত', route: '/section/gram-panchayats', img: '/src/assets/images/balagarh_civic_building_1794933202842.jpg', strip: 'bg-emerald-600' },
-    { en: 'Schools & Education', bn: 'স্কুল ও শিক্ষা', route: '/section/schools', img: '/src/assets/images/balagarh_school_campus_1794933202955.jpg', strip: 'bg-blue-600' },
-    { en: 'Health Services', bn: 'স্বাস্থ্য পরিষেবা', route: '/section/hospitals', img: '/src/assets/images/balagarh_hospital_center_1794933204402.jpg', strip: 'bg-rose-600' },
-    { en: 'Police & Safety', bn: 'পুলিশ ও নিরাপত্তা', route: '/section/police-stations', img: '/src/assets/images/balagarh_civic_building_1794933202842.jpg', strip: 'bg-indigo-700' },
-    { en: 'Tourist Places', bn: 'পর্যটন স্থান', route: '/section/tourism', img: '/src/assets/images/balagarh_river_panorama_1794933202948.jpg', strip: 'bg-teal-600' },
-    { en: 'Heritage Sites', bn: 'ঐতিহাসিক স্থান', route: '/section/culture-heritage', img: '/src/assets/images/balagarh_hero_heritage_1794933203220.jpg', strip: 'bg-amber-600' },
-    { en: 'Markets & Business', bn: 'বাজার ও কৃষি', route: '/section/agriculture', img: '/src/assets/images/balagarh_community_festival_1794933204840.jpg', strip: 'bg-purple-600' },
-    { en: 'Transport', bn: 'পরিবহন ও সড়ক', route: '/section/roads-infrastructure', img: '/src/assets/images/balagarh_river_panorama_1794933202948.jpg', strip: 'bg-sky-700' },
+    { en: 'Panchayats', bn: 'পঞ্চায়েত', route: '/section/gram-panchayats', img: '/uploads/guptipara_heritage_temple_02.jpg', strip: 'bg-emerald-600' },
+    { en: 'Schools & Education', bn: 'স্কুল ও শিক্ষা', route: '/section/schools', img: '/uploads/bengal_high_school.jpg', strip: 'bg-blue-600' },
+    { en: 'Health Services', bn: 'স্বাস্থ্য পরিষেবা', route: '/section/hospitals', img: '/uploads/bengal_health_hospital.jpg', strip: 'bg-rose-600' },
+    { en: 'Police & Safety', bn: 'পুলিশ ও নিরাপত্তা', route: '/section/police-stations', img: '/uploads/hooghly_river_boat_travel.jpg', strip: 'bg-indigo-700' },
+    { en: 'Tourist Places', bn: 'পর্যটন স্থান', route: '/section/tourism', img: '/uploads/hooghly_river_boats.jpg', strip: 'bg-teal-600' },
+    { en: 'Heritage Sites', bn: 'ঐতিহাসিক স্থান', route: '/section/culture-heritage', img: '/uploads/guptipara_terracotta_temple.jpg', strip: 'bg-amber-600' },
+    { en: 'Markets & Business', bn: 'বাজার ও কৃষি', route: '/section/agriculture', img: '/uploads/bengal_agriculture_paddy.jpg', strip: 'bg-purple-600' },
+    { en: 'Transport', bn: 'পরিবহন ও সড়ক', route: '/section/roads-infrastructure', img: '/uploads/hooghly_railway_transport.jpg', strip: 'bg-sky-700' },
   ];
 
   const exploreSectionBlock = (
@@ -1241,7 +1243,7 @@ export const PublicHome: React.FC<PublicHomeProps> = ({ data, lang, onNavigate }
                 <div className="p-3">
                   <div className="relative rounded-lg overflow-hidden border border-slate-200 h-40 bg-emerald-50">
                     <SmartImage
-                      src="/src/assets/images/balagarh_river_panorama_1794933202948.jpg"
+                      src="/uploads/hooghly_river_boats.jpg"
                       alt="Map of Balagarh Block"
                       className="w-full h-full object-cover opacity-85"
                     />
@@ -1305,7 +1307,14 @@ export const PublicHome: React.FC<PublicHomeProps> = ({ data, lang, onNavigate }
       case 'explore_grid':
         return hasAbout ? null : <React.Fragment key={key}>{exploreSectionBlock}</React.Fragment>;
 
-      case 'media_galleries':
+      case 'media_galleries': {
+        const featuredVideoSrc = isVideoAssetUrl(data.videoGallery[0]?.video_url)
+          ? data.videoGallery[0]!.video_url!
+          : '/uploads/balagarh_river_journey_doc.webm';
+        const liveReelSrc = isVideoAssetUrl(data.videoGallery[1]?.video_url)
+          ? data.videoGallery[1]!.video_url!
+          : '/uploads/balagarh_river_boat_reel.webm';
+
         return (
           <section key={key} className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* Photo Gallery */}
@@ -1322,7 +1331,7 @@ export const PublicHome: React.FC<PublicHomeProps> = ({ data, lang, onNavigate }
                 >
                   <div className="relative aspect-[16/10] rounded-lg overflow-hidden bg-slate-100">
                     <SmartImage
-                      src={data.photoGallery[0]?.cover_url || '/src/assets/images/balagarh_hero_heritage_1794933203220.jpg'}
+                      src={data.photoGallery[0]?.cover_url || '/uploads/guptipara_terracotta_temple.jpg'}
                       alt="Photo Gallery"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
@@ -1350,18 +1359,23 @@ export const PublicHome: React.FC<PublicHomeProps> = ({ data, lang, onNavigate }
                   className="w-full group text-left"
                 >
                   <div className="relative aspect-[16/10] rounded-lg overflow-hidden bg-slate-900">
-                    <SmartImage
-                      src={data.videoGallery[0]?.cover_url || '/src/assets/images/balagarh_river_panorama_1794933202948.jpg'}
-                      alt="Video Gallery"
-                      className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-300"
+                    <video
+                      src={featuredVideoSrc}
+                      poster={data.videoGallery[0]?.cover_url || '/uploads/hooghly_river_boats.jpg'}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      preload="metadata"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
-                    <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                       <div className="w-12 h-12 rounded-full bg-red-600/95 text-white flex items-center justify-center shadow-lg">
                         <Play className="w-5 h-5 ml-0.5 fill-current" />
                       </div>
                     </div>
                     <div className="absolute bottom-2 right-2 bg-black/80 text-white text-xs font-mono px-2 py-0.5 rounded">
-                      05:32
+                      HD WEBM
                     </div>
                   </div>
                   <div className="mt-2.5 text-center text-xs font-extrabold text-blue-700 group-hover:underline">
@@ -1384,12 +1398,21 @@ export const PublicHome: React.FC<PublicHomeProps> = ({ data, lang, onNavigate }
                   className="w-full group text-left"
                 >
                   <div className="relative aspect-[16/10] rounded-lg overflow-hidden bg-slate-900">
-                    <SmartImage
-                      src="/src/assets/images/balagarh_community_festival_1794933204840.jpg"
-                      alt="Balagarh Events Broadcast"
+                    <video
+                      src={liveReelSrc}
+                      poster="/uploads/bengal_festival_puja.jpg"
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      preload="metadata"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
-                    <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-extrabold shadow">
+                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                      LIVE
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                       <div className="w-11 h-11 rounded-full bg-black/60 border-2 border-white text-white flex items-center justify-center shadow">
                         <Play className="w-5 h-5 ml-0.5 fill-current" />
                       </div>
@@ -1403,6 +1426,7 @@ export const PublicHome: React.FC<PublicHomeProps> = ({ data, lang, onNavigate }
             </div>
           </section>
         );
+      }
 
       default:
         return null;

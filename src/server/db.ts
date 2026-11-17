@@ -3,12 +3,21 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const storageDir = path.resolve(process.cwd(), 'storage');
-const uploadsDir = path.resolve(process.cwd(), 'uploads');
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const bundledStorageDir = path.resolve(process.cwd(), 'storage');
+export const bundledUploadsDir = path.resolve(process.cwd(), 'uploads');
+const storageDir = isServerless ? '/tmp/balagarh_storage' : bundledStorageDir;
+export const uploadsDir = isServerless ? '/tmp/balagarh_uploads' : bundledUploadsDir;
+
 if (!fs.existsSync(storageDir)) fs.mkdirSync(storageDir, { recursive: true });
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
 const dbPath = path.join(storageDir, 'balagarh_portal.db');
+const bundledDbPath = path.join(bundledStorageDir, 'balagarh_portal.db');
+if (isServerless && !fs.existsSync(dbPath) && fs.existsSync(bundledDbPath)) {
+  fs.copyFileSync(bundledDbPath, dbPath);
+}
+
 export const db = new DatabaseSync(dbPath);
 
 db.exec('PRAGMA foreign_keys = ON;');
@@ -283,6 +292,258 @@ export function initDatabase() {
       1
     );
   }
+
+  syncDownloadedWebMedia();
+}
+
+function syncDownloadedWebMedia() {
+  const downloadedCatalog: Array<{
+    file: string;
+    mime: string;
+    type: 'image' | 'video';
+    folder: string;
+    caption_en: string;
+    caption_bn: string;
+    alt: string;
+  }> = [
+    {
+      file: 'guptipara_terracotta_temple.jpg',
+      mime: 'image/jpeg',
+      type: 'image',
+      folder: 'heritage',
+      caption_en: 'Bindhyabasini Temple, Guptipara (Balagarh Block Heritage)',
+      caption_bn: 'বিন্ধ্যবাসিনী মন্দির, গুপ্তিপাড়া (বলাগড় ব্লক ঐতিহ্য)',
+      alt: 'Guptipara terracotta temple in Balagarh Block',
+    },
+    {
+      file: 'guptipara_heritage_temple_02.jpg',
+      mime: 'image/jpeg',
+      type: 'image',
+      folder: 'heritage',
+      caption_en: 'Historic Guptipara Temple Complex Architecture',
+      caption_bn: 'ঐতিহাসিক গুপ্তিপাড়া মন্দির প্রাঙ্গণ স্থাপত্য',
+      alt: 'Historic temples of Guptipara, Hooghly',
+    },
+    {
+      file: 'hooghly_river_boats.jpg',
+      mime: 'image/jpeg',
+      type: 'image',
+      folder: 'tourism',
+      caption_en: 'Traditional Wooden Boats on the Hooghly Riverfront',
+      caption_bn: 'হুগলি নদীতে ঐতিহ্যবাহী কাঠের নৌকা',
+      alt: 'Boats on Hooghly River, West Bengal',
+    },
+    {
+      file: 'hooghly_river_boat_travel.jpg',
+      mime: 'image/jpeg',
+      type: 'image',
+      folder: 'tourism',
+      caption_en: 'Boat Journey Across Hooghly River Waters',
+      caption_bn: 'হুগলি নদীর বুকে নৌকা যাত্রা',
+      alt: 'Boat travelling down the Hooghly River',
+    },
+    {
+      file: 'bengal_high_school.jpg',
+      mime: 'image/jpeg',
+      type: 'image',
+      folder: 'schools',
+      caption_en: 'Historic High School Campus in Hooghly-Nadia Belt',
+      caption_bn: 'হুগলি-নদীয়া অঞ্চলের ঐতিহ্যবাহী উচ্চ বিদ্যালয় প্রাঙ্গণ',
+      alt: 'West Bengal high school building',
+    },
+    {
+      file: 'bengal_festival_puja.jpg',
+      mime: 'image/jpeg',
+      type: 'image',
+      folder: 'events',
+      caption_en: 'Traditional Sharadiya Festival & Cultural Celebration',
+      caption_bn: 'বাংলার শারদোৎসব ও ঐতিহ্যবাহী সাংস্কৃতিক অনুষ্ঠান',
+      alt: 'Bengal cultural puja festival celebration',
+    },
+    {
+      file: 'hooghly_railway_transport.jpg',
+      mime: 'image/jpeg',
+      type: 'image',
+      folder: 'general',
+      caption_en: 'Bandel–Katwa Rail Corridor & Local Commuter Connectivity',
+      caption_bn: 'ব্যান্ডেল–কাটোয়া রেলপথ ও যাত্রী পরিষেবা',
+      alt: 'Hooghly local railway station and train service',
+    },
+    {
+      file: 'bengal_agriculture_paddy.jpg',
+      mime: 'image/jpeg',
+      type: 'image',
+      folder: 'general',
+      caption_en: 'Lush Green Paddy Cultivation Across Rural West Bengal',
+      caption_bn: 'বাংলার সবুজ ধানক্ষেত ও কৃষি সমৃদ্ধি',
+      alt: 'Paddy fields in rural West Bengal',
+    },
+    {
+      file: 'bengal_health_hospital.jpg',
+      mime: 'image/jpeg',
+      type: 'image',
+      folder: 'hospitals',
+      caption_en: 'Public Healthcare & Medical Centre Facility',
+      caption_bn: 'জনস্বাস্থ্য ও হাসপাতাল চিকিৎসা কেন্দ্র',
+      alt: 'West Bengal public hospital facility',
+    },
+    {
+      file: 'balagarh_river_boat_reel.webm',
+      mime: 'video/webm',
+      type: 'video',
+      folder: 'tourism',
+      caption_en: 'Riverfront Boat Crossing & Scenic Waterway Video Reel',
+      caption_bn: 'নদীপথে নৌকা পারাপার ও প্রাকৃতিক দৃশ্যের ভিডিও',
+      alt: 'Scenic river boat video background',
+    },
+    {
+      file: 'balagarh_river_journey_doc.webm',
+      mime: 'video/webm',
+      type: 'video',
+      folder: 'tourism',
+      caption_en: 'Traditional Wooden River Boat Craft Documentary Footage',
+      caption_bn: 'নৌকা শিল্প ও নদীপথের প্রামাণ্য ভিডিও',
+      alt: 'River boat craft documentary video',
+    },
+  ];
+
+  const findMedia = db.prepare('SELECT id FROM media WHERE url = ?');
+  const insertMedia = db.prepare(`
+    INSERT INTO media (filename, original_name, url, mime_type, media_type, folder, file_size, caption_en, caption_bn, alt_text, uploaded_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const mediaIds: Record<string, number> = {};
+  let newlyRegistered = 0;
+
+  const resolveUploadPath = (file: string) => {
+    const primary = path.join(uploadsDir, file);
+    if (fs.existsSync(primary)) return primary;
+    const bundled = path.join(bundledUploadsDir, file);
+    if (fs.existsSync(bundled)) return bundled;
+    return null;
+  };
+
+  for (const item of downloadedCatalog) {
+    const filePath = resolveUploadPath(item.file);
+    if (!filePath) continue;
+    const url = `/uploads/${item.file}`;
+    const existing = findMedia.get(url) as { id: number } | undefined;
+    if (existing) {
+      mediaIds[item.file] = existing.id;
+    } else {
+      const size = fs.statSync(filePath).size;
+      const res = insertMedia.run(
+        item.file,
+        item.file,
+        url,
+        item.mime,
+        item.type,
+        item.folder,
+        size,
+        item.caption_en,
+        item.caption_bn,
+        item.alt,
+        'System Web Sync'
+      );
+      mediaIds[item.file] = Number(res.lastInsertRowid);
+      newlyRegistered++;
+    }
+  }
+
+  // Upgrade any broken placeholder YouTube URLs in contents and events to locally saved .webm videos
+  if (mediaIds['balagarh_river_journey_doc.webm']) {
+    db.prepare(`
+      UPDATE contents
+      SET video_url = ?, cover_media_id = COALESCE(?, cover_media_id)
+      WHERE section_slug = 'video-gallery' AND (video_url LIKE '%dQw4w9WgXcQ%' OR video_url IS NULL OR video_url = '')
+    `).run(
+      '/uploads/balagarh_river_journey_doc.webm',
+      mediaIds['hooghly_river_boat_travel.jpg'] || null
+    );
+  }
+  if (mediaIds['balagarh_river_boat_reel.webm']) {
+    db.prepare(`
+      UPDATE events
+      SET video_url = ?
+      WHERE video_url LIKE '%dQw4w9WgXcQ%'
+    `).run('/uploads/balagarh_river_boat_reel.webm');
+  }
+
+  // Upgrade any unbundled /src/assets/images/* URLs to locally saved /uploads/* web downloads
+  const legacyUrlMap: Array<[string, string]> = [
+    ['/src/assets/images/balagarh_hero_heritage_1794933203220.jpg', '/uploads/guptipara_terracotta_temple.jpg'],
+    ['/src/assets/images/balagarh_river_panorama_1794933202948.jpg', '/uploads/hooghly_river_boats.jpg'],
+    ['/src/assets/images/balagarh_civic_building_1794933202842.jpg', '/uploads/guptipara_heritage_temple_02.jpg'],
+    ['/src/assets/images/balagarh_school_campus_1794933202955.jpg', '/uploads/bengal_high_school.jpg'],
+    ['/src/assets/images/balagarh_hospital_center_1794933204402.jpg', '/uploads/bengal_health_hospital.jpg'],
+    ['/src/assets/images/balagarh_community_festival_1794933204840.jpg', '/uploads/bengal_festival_puja.jpg'],
+  ];
+  const updateLegacyMediaUrl = db.prepare('UPDATE media SET url = ? WHERE url = ?');
+  for (const [oldUrl, newUrl] of legacyUrlMap) {
+    const newFilename = newUrl.replace(/^\/uploads\//, '');
+    if (resolveUploadPath(newFilename)) {
+      updateLegacyMediaUrl.run(newUrl, oldUrl);
+    }
+  }
+
+  // On initial registration of web downloads, connect them to Hero Banner #1 (live video), sections, and Video Gallery
+  if (newlyRegistered > 0) {
+    if (mediaIds['balagarh_river_boat_reel.webm']) {
+      db.prepare(`
+        UPDATE homepage_banners SET media_id = ? WHERE sort_order = 1
+      `).run(mediaIds['balagarh_river_boat_reel.webm']);
+    }
+    if (mediaIds['hooghly_river_boats.jpg']) {
+      db.prepare(`UPDATE homepage_banners SET media_id = ? WHERE sort_order = 2`).run(mediaIds['hooghly_river_boats.jpg']);
+    }
+    if (mediaIds['bengal_festival_puja.jpg']) {
+      db.prepare(`UPDATE homepage_banners SET media_id = ? WHERE sort_order = 3`).run(mediaIds['bengal_festival_puja.jpg']);
+    }
+    if (mediaIds['guptipara_terracotta_temple.jpg']) {
+      db.prepare(`UPDATE contents SET cover_media_id = ? WHERE section_slug IN ('culture-heritage', 'tourist-attractions', 'photo-gallery')`).run(mediaIds['guptipara_terracotta_temple.jpg']);
+    }
+    if (mediaIds['hooghly_river_boats.jpg']) {
+      db.prepare(`UPDATE contents SET cover_media_id = ? WHERE section_slug IN ('about-balagarh', 'tourism')`).run(mediaIds['hooghly_river_boats.jpg']);
+    }
+    if (mediaIds['bengal_agriculture_paddy.jpg']) {
+      db.prepare(`UPDATE contents SET cover_media_id = ? WHERE section_slug = 'agriculture'`).run(mediaIds['bengal_agriculture_paddy.jpg']);
+    }
+    if (mediaIds['hooghly_railway_transport.jpg']) {
+      db.prepare(`UPDATE contents SET cover_media_id = ? WHERE section_slug = 'roads-infrastructure'`).run(mediaIds['hooghly_railway_transport.jpg']);
+    }
+    if (mediaIds['bengal_high_school.jpg']) {
+      db.prepare(`UPDATE contents SET cover_media_id = ? WHERE section_slug IN ('schools', 'colleges')`).run(mediaIds['bengal_high_school.jpg']);
+    }
+    if (mediaIds['bengal_health_hospital.jpg']) {
+      db.prepare(`UPDATE contents SET cover_media_id = ? WHERE section_slug = 'hospitals'`).run(mediaIds['bengal_health_hospital.jpg']);
+    }
+    if (mediaIds['guptipara_heritage_temple_02.jpg']) {
+      db.prepare(`UPDATE homepage_popups SET media_id = ? WHERE id = 1`).run(mediaIds['bengal_festival_puja.jpg'] || mediaIds['guptipara_heritage_temple_02.jpg']);
+    }
+
+    // Ensure at least 2 published Video Gallery entries with real local .webm videos
+    const vidCount = (db.prepare(`SELECT COUNT(*) as c FROM contents WHERE section_slug = 'video-gallery' AND deleted_at IS NULL`).get() as { c: number }).c;
+    if (vidCount < 2 && mediaIds['balagarh_river_boat_reel.webm']) {
+      db.prepare(`
+        INSERT INTO contents (
+          section_slug, slug, title_en, title_bn, summary_en, summary_bn,
+          body_en, body_bn, cover_media_id, video_url, status, is_featured, sort_order, author_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'published', 1, 2, 1)
+      `).run(
+        'video-gallery',
+        'hooghly-riverfront-boat-crossing-reel',
+        'Hooghly Riverfront & Boat Crossing Scenic Video',
+        'হুগলি নদীর ঘাট ও নৌকা পারাপারের দৃশ্য',
+        'Scenic video footage showcasing river transport and serene waterways across Balagarh.',
+        'বলাগড়ের নদীপথ, ঘাট ও নৌকা পারাপারের প্রাকৃতিক দৃশ্যের ভিডিও।',
+        '<p>Watch serene riverfront boat crossings and natural waterways representing daily riverine life in Balagarh Block.</p>',
+        '<p>বলাগড় ব্লকের নদীতীরবর্তী জীবনযাত্রা ও নৌকা চলাচলের সুন্দর ভিডিও দৃশ্য দেখুন।</p>',
+        mediaIds['hooghly_river_boats.jpg'] || null,
+        '/uploads/balagarh_river_boat_reel.webm'
+      );
+    }
+  }
 }
 
 export function promoteScheduledContent() {
@@ -485,79 +746,79 @@ function seedDatabase() {
     insertSection.run(s.slug, s.en, s.bn, s.group, s.desc_en, s.desc_bn, s.icon, idx + 1);
   });
 
-  // 4. Seed Media Library with our 6 generated high-res images
+  // 4. Seed Media Library with verified locally saved assets
   const mediaSeed = [
     {
-      filename: 'balagarh_hero_heritage_1794933203220.jpg',
+      filename: 'guptipara_terracotta_temple.jpg',
       original_name: 'guptipara_terracotta_temple_hooghly.jpg',
-      url: '/src/assets/images/balagarh_hero_heritage_1794933203220.jpg',
+      url: '/uploads/guptipara_terracotta_temple.jpg',
       mime_type: 'image/jpeg',
       media_type: 'image',
       folder: 'heritage',
-      file_size: 428190,
+      file_size: 342804,
       caption_en: 'Historic terracotta temple along the tranquil Hooghly riverbank in Balagarh',
       caption_bn: 'বলাগড়ের হুগলি নদীর তীরে ঐতিহাসিক টেরাকোটা মন্দির ও নৌকা',
       alt_text: 'Terracotta temple by the Hooghly river in Balagarh at golden hour',
     },
     {
-      filename: 'balagarh_river_panorama_1794933202948.jpg',
+      filename: 'hooghly_river_boats.jpg',
       original_name: 'balagarh_river_aerial_sabuj_dwip.jpg',
-      url: '/src/assets/images/balagarh_river_panorama_1794933202948.jpg',
+      url: '/uploads/hooghly_river_boats.jpg',
       mime_type: 'image/jpeg',
       media_type: 'image',
       folder: 'tourism',
-      file_size: 512400,
-      caption_en: 'Aerial panorama of lush green Balagarh villages and river ferry ghats',
-      caption_bn: 'বলাগড়ের সবুজ গ্রামাঞ্চল, নদী ও ফেরি ঘাটের মনোরম দৃশ্য',
-      alt_text: 'Aerial view of Balagarh river and green rural landscape',
+      file_size: 151059,
+      caption_en: 'Panorama of lush green Balagarh riverbanks and wooden boats on the Hooghly',
+      caption_bn: 'বলাগড়ের সবুজ গ্রামাঞ্চল, হুগলি নদী ও ফেরি ঘাটের মনোরম দৃশ্য',
+      alt_text: 'Scenic view of Hooghly river boats in Balagarh',
     },
     {
-      filename: 'balagarh_civic_building_1794933202842.jpg',
+      filename: 'guptipara_heritage_temple_02.jpg',
       original_name: 'balagarh_gram_panchayat_office.jpg',
-      url: '/src/assets/images/balagarh_civic_building_1794933202842.jpg',
+      url: '/uploads/guptipara_heritage_temple_02.jpg',
       mime_type: 'image/jpeg',
       media_type: 'image',
       folder: 'panchayats',
-      file_size: 389120,
-      caption_en: 'Modern Gram Panchayat Bhavan serving local residents in Balagarh Block',
-      caption_bn: 'বলাগড় ব্লকের আধুনিক গ্রাম পঞ্চায়েত ভবন ও নাগরিক পরিষেবা কেন্দ্র',
-      alt_text: 'Gram Panchayat building exterior in Balagarh Block',
+      file_size: 331964,
+      caption_en: 'Civic heritage and Gram Panchayat landmark serving local residents in Balagarh Block',
+      caption_bn: 'বলাগড় ব্লকের ঐতিহ্য ও গ্রাম পঞ্চায়েত পরিষেবা কেন্দ্র',
+      alt_text: 'Heritage civic landmark in Balagarh Block',
     },
     {
-      filename: 'balagarh_school_campus_1794933202955.jpg',
+      filename: 'bengal_high_school.jpg',
       original_name: 'balagarh_high_school_campus.jpg',
-      url: '/src/assets/images/balagarh_school_campus_1794933202955.jpg',
+      url: '/uploads/bengal_high_school.jpg',
       mime_type: 'image/jpeg',
       media_type: 'image',
       folder: 'schools',
-      file_size: 405880,
+      file_size: 218411,
       caption_en: 'Balagarh High School campus and sports ground during morning hours',
       caption_bn: 'বলাগড় উচ্চ বিদ্যালয় প্রাঙ্গণ ও খেলার মাঠ',
-      alt_text: 'Rural high school building and playground in Balagarh',
+      alt_text: 'High school building and playground in Bengal',
     },
     {
-      filename: 'balagarh_hospital_center_1794933204402.jpg',
+      filename: 'bengal_health_hospital.jpg',
       original_name: 'balagarh_rural_hospital_bphc.jpg',
-      url: '/src/assets/images/balagarh_hospital_center_1794933204402.jpg',
+      url: '/uploads/bengal_health_hospital.jpg',
       mime_type: 'image/jpeg',
       media_type: 'image',
       folder: 'hospitals',
-      file_size: 374510,
+      file_size: 433649,
       caption_en: 'Block Primary Health Centre & Rural Hospital providing 24x7 emergency care',
       caption_bn: 'বলাগড় ব্লক প্রাথমিক স্বাস্থ্যকেন্দ্র ও গ্রামীণ হাসপাতাল',
-      alt_text: 'Balagarh Block Primary Health Centre and ambulance',
+      alt_text: 'Rural hospital building providing 24x7 healthcare services',
     },
     {
-      filename: 'balagarh_community_festival_1794933204840.jpg',
+      filename: 'bengal_festival_puja.jpg',
       original_name: 'balagarh_cultural_book_fair.jpg',
-      url: '/src/assets/images/balagarh_community_festival_1794933204840.jpg',
+      url: '/uploads/bengal_festival_puja.jpg',
       mime_type: 'image/jpeg',
       media_type: 'image',
       folder: 'events',
-      file_size: 482310,
-      caption_en: 'Balagarh rural cultural festival, folk music stage, and community book fair',
-      caption_bn: 'বলাগড় পল্লী সংস্কৃতি উৎসব, লোকসংগীত ও গ্রামীণ বইমেলা',
-      alt_text: 'Villagers gathered at a colorful cultural festival and book fair in Bengal',
+      file_size: 594793,
+      caption_en: 'Balagarh rural cultural festival, folk music stage, and community fair',
+      caption_bn: 'বলাগড় পল্লী সংস্কৃতি উৎসব, লোকসংগীত ও গ্রামীণ মেলা',
+      alt_text: 'Vibrant cultural festival celebration in Bengal',
     },
   ];
 
@@ -1140,7 +1401,7 @@ function seedDatabase() {
       body_en: '<p>Watch how skilled craftsmen shape sal timber into traditional Bengali country boats using time-honored tools.</p>',
       body_bn: '<p>বলাগড়ের দক্ষ কারিগরদের হাতে তৈরি ঐতিহ্যবাহী কাঠের নৌকা নির্মাণের সম্পূর্ণ ভিডিও দেখুন।</p>',
       cover: mRiver,
-      video: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      video: '/uploads/balagarh_river_journey_doc.webm',
       doc: null, ext: null,
       meta: { Duration: '05:32', Format: 'HD Documentary' },
       status: 'published', featured: 1, order: 1, views: 980,
@@ -1276,7 +1537,7 @@ function seedDatabase() {
       venue: 'Balagarh High School Ground',
       organizer: 'Balagarh Cultural Committee',
       cover: mFestival,
-      video: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      video: '/uploads/balagarh_river_boat_reel.webm',
       reg: 'https://ourbalagarh.in/events/book-fair',
       contact: 'Rituparna Basu (+91 98300-XXXXX)',
       status: 'Ongoing',
