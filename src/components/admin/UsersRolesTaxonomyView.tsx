@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Activity, Plus, Shield, Tag, Trash2, UserPlus, X } from 'lucide-react';
+import {
+  Activity, Check, Copy, Eye, EyeOff, KeyRound, Plus, RefreshCw, Search, Shield,
+  Tag, Trash2, UserPlus, X,
+} from 'lucide-react';
 import type { ActivityLog, ContentCategory, ContentSection, ContentTag, RoleRecord, UserRecord } from '../../types/cms';
 import { apiFetch } from '../../lib/api';
 
@@ -9,6 +12,13 @@ export const UsersRolesView: React.FC<{ currentUser: UserRecord }> = ({ currentU
   const [sections, setSections] = useState<ContentSection[]>([]);
   const [editingRole, setEditingRole] = useState<RoleRecord | null>(null);
   const [newUserOpen, setNewUserOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showAllPasswords, setShowAllPasswords] = useState(false);
+  const [revealedIds, setRevealedIds] = useState<Record<number, boolean>>({});
+  const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [resetTarget, setResetTarget] = useState<UserRecord | null>(null);
+  const [resetPasswordInput, setResetPasswordInput] = useState('');
+  const [showResetInput, setShowResetInput] = useState(true);
   const [form, setForm] = useState({
     username: '',
     full_name: '',
@@ -19,6 +29,8 @@ export const UsersRolesView: React.FC<{ currentUser: UserRecord }> = ({ currentU
     assigned_institution: '',
   });
   const [feedback, setFeedback] = useState('');
+
+  const isSuperAdmin = currentUser.role_slug === 'super_admin' || currentUser.permissions.modules.includes('*');
 
   const load = () => {
     apiFetch<{ roles: RoleRecord[]; users: UserRecord[] }>('/api/admin/users-roles')
@@ -63,6 +75,37 @@ export const UsersRolesView: React.FC<{ currentUser: UserRecord }> = ({ currentU
     load();
   };
 
+  const toggleUserActive = async (u: UserRecord) => {
+    const nextActive = u.is_active === 1 ? 0 : 1;
+    await apiFetch(`/api/admin/users/${u.id}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        is_active: nextActive,
+        assigned_panchayat: u.assigned_panchayat,
+        assigned_institution: u.assigned_institution,
+      }),
+    });
+    setFeedback(`${u.full_name} account is now ${nextActive ? 'Active' : 'Suspended'}.`);
+    load();
+  };
+
+  const handleAdminResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetTarget) return;
+    try {
+      await apiFetch(`/api/admin/users/${resetTarget.id}/reset-password`, {
+        method: 'POST',
+        body: JSON.stringify({ newPassword: resetPasswordInput }),
+      });
+      setFeedback(`Password reset successfully for ${resetTarget.full_name} (${resetTarget.username}).`);
+      setResetTarget(null);
+      setResetPasswordInput('');
+      load();
+    } catch (err) {
+      setFeedback(err instanceof Error ? err.message : 'Password reset failed');
+    }
+  };
+
   const saveRolePermissions = async () => {
     if (!editingRole) return;
     await apiFetch(`/api/admin/roles/${editingRole.id}/permissions`, {
@@ -73,6 +116,28 @@ export const UsersRolesView: React.FC<{ currentUser: UserRecord }> = ({ currentU
     setEditingRole(null);
     load();
   };
+
+  const toggleRevealUser = (id: number) => {
+    setRevealedIds((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const copyPassword = (u: UserRecord) => {
+    if (!u.visible_password || !navigator.clipboard) return;
+    navigator.clipboard.writeText(u.visible_password).catch(() => {});
+    setCopiedId(u.id);
+    setTimeout(() => setCopiedId(null), 1500);
+  };
+
+  const filteredUsers = users.filter((u) => {
+    if (!searchTerm.trim()) return true;
+    const q = searchTerm.toLowerCase();
+    return (
+      u.full_name.toLowerCase().includes(q) ||
+      u.username.toLowerCase().includes(q) ||
+      u.email.toLowerCase().includes(q) ||
+      u.role_name_en.toLowerCase().includes(q)
+    );
+  });
 
   const allModules = [
     ...sections.map((s) => ({ slug: s.slug, label: s.name_en })),
@@ -85,66 +150,227 @@ export const UsersRolesView: React.FC<{ currentUser: UserRecord }> = ({ currentU
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-extrabold text-slate-900">Users, Roles & Module-Level Permissions</h2>
+          <h2 className="text-lg sm:text-xl font-extrabold text-slate-900">
+            Users, Credentials &amp; Role Permissions
+          </h2>
           <p className="text-xs text-slate-600 mt-0.5">
-            Assign Panchayat, School, Hospital, Police, News, Event, and Gallery editors with strict module-level access control.
+            {isSuperAdmin
+              ? 'Super Admin Credential Vault: inspect all user accounts & passwords, reset passwords, manage active status, and assign role permissions.'
+              : 'Assign Panchayat, School, Hospital, Police, News, Event, and Gallery editors with strict module-level access control.'}
           </p>
         </div>
-        {currentUser.permissions.modules.includes('*') && (
-          <button
-            type="button"
-            onClick={() => setNewUserOpen(true)}
-            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold inline-flex items-center gap-1.5"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Add Editor / User</span>
-          </button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {isSuperAdmin && (
+            <button
+              type="button"
+              onClick={() => setShowAllPasswords((v) => !v)}
+              className="px-3.5 py-2 rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-800 text-xs font-bold inline-flex items-center gap-1.5"
+            >
+              {showAllPasswords ? <EyeOff className="w-4 h-4 text-rose-600" /> : <Eye className="w-4 h-4 text-blue-600" />}
+              <span>{showAllPasswords ? 'Hide All Passwords' : 'Show All Passwords'}</span>
+            </button>
+          )}
+          {isSuperAdmin && (
+            <button
+              type="button"
+              onClick={() => setNewUserOpen(true)}
+              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold inline-flex items-center gap-1.5"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>Add Editor / User</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {feedback && (
-        <div className="px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-medium">
-          {feedback}
+        <div className="px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-sm font-medium flex items-center justify-between gap-2">
+          <span>{feedback}</span>
+          <button type="button" onClick={() => setFeedback('')} className="text-emerald-700 hover:text-emerald-950">
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
-      {/* Users Table */}
+      {/* Users Table + Mobile Cards */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-slate-200 font-bold text-sm text-slate-900">Active Portal Users ({users.length})</div>
-        <div className="overflow-x-auto">
+        <div className="px-4 sm:px-5 py-3.5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="font-bold text-sm text-slate-900">
+            Portal User Accounts ({filteredUsers.length})
+          </div>
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-50 w-full sm:w-64">
+            <Search className="w-4 h-4 text-slate-400 shrink-0" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search user, email or role..."
+              className="text-xs bg-transparent focus:outline-none w-full"
+            />
+          </div>
+        </div>
+
+        {/* Desktop Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
-                <th className="py-3 px-4">User</th>
+                <th className="py-3 px-4">User &amp; Status</th>
                 <th className="py-3 px-3">Username</th>
+                {isSuperAdmin && <th className="py-3 px-3">Password</th>}
                 <th className="py-3 px-3">Scope / Assigned Unit</th>
-                <th className="py-3 px-4">Assigned Role</th>
+                <th className="py-3 px-3">Assigned Role</th>
+                {isSuperAdmin && <th className="py-3 px-4 text-right">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {users.map((u) => (
-                <tr key={u.id} className="hover:bg-slate-50">
-                  <td className="py-3 px-4">
-                    <div className="font-bold text-slate-900">{u.full_name}</div>
-                    <div className="text-slate-500">{u.email}</div>
-                  </td>
-                  <td className="py-3 px-3 font-mono text-slate-700">{u.username}</td>
-                  <td className="py-3 px-3 text-slate-600">{u.assigned_panchayat || u.assigned_institution || 'All Block Modules'}</td>
-                  <td className="py-3 px-4">
-                    <select
-                      value={u.role_id}
-                      onChange={(e) => changeUserRole(u, Number(e.target.value))}
-                      className="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white font-semibold"
-                    >
-                      {roles.map((r) => <option key={r.id} value={r.id}>{r.name_en}</option>)}
-                    </select>
-                  </td>
-                </tr>
-              ))}
+              {filteredUsers.map((u) => {
+                const isRevealed = showAllPasswords || Boolean(revealedIds[u.id]);
+                return (
+                  <tr key={u.id} className="hover:bg-slate-50">
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900">{u.full_name}</span>
+                        <button
+                          type="button"
+                          onClick={() => toggleUserActive(u)}
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            u.is_active === 1
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-rose-100 text-rose-800'
+                          }`}
+                          title="Click to toggle Active / Suspended"
+                        >
+                          {u.is_active === 1 ? 'Active' : 'Suspended'}
+                        </button>
+                      </div>
+                      <div className="text-slate-500">{u.email}</div>
+                    </td>
+                    <td className="py-3 px-3 font-mono font-semibold text-slate-800">{u.username}</td>
+                    {isSuperAdmin && (
+                      <td className="py-3 px-3">
+                        <div className="inline-flex items-center gap-1.5 bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1">
+                          <span className="font-mono text-slate-900 min-w-[90px]">
+                            {isRevealed ? (u.visible_password || 'balagarh2026') : '••••••••••'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => toggleRevealUser(u.id)}
+                            className="p-0.5 text-slate-500 hover:text-blue-700"
+                            title={isRevealed ? 'Hide password' : 'Show password'}
+                          >
+                            {isRevealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => copyPassword(u)}
+                            className="p-0.5 text-slate-500 hover:text-emerald-700"
+                            title="Copy password"
+                          >
+                            {copiedId === u.id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      </td>
+                    )}
+                    <td className="py-3 px-3 text-slate-600">{u.assigned_panchayat || u.assigned_institution || 'All Block Modules'}</td>
+                    <td className="py-3 px-3">
+                      <select
+                        value={u.role_id}
+                        onChange={(e) => changeUserRole(u, Number(e.target.value))}
+                        className="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white font-semibold"
+                      >
+                        {roles.map((r) => <option key={r.id} value={r.id}>{r.name_en}</option>)}
+                      </select>
+                    </td>
+                    {isSuperAdmin && (
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setResetTarget(u);
+                            setResetPasswordInput('');
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 font-bold inline-flex items-center gap-1"
+                        >
+                          <KeyRound className="w-3.5 h-3.5" />
+                          <span>Reset Password</span>
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Cards View */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {filteredUsers.map((u) => {
+            const isRevealed = showAllPasswords || Boolean(revealedIds[u.id]);
+            return (
+              <div key={u.id} className="p-4 space-y-2.5 text-xs">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-bold text-sm text-slate-900 truncate">{u.full_name}</div>
+                    <div className="text-slate-500 truncate">{u.email}</div>
+                    <div className="font-mono text-blue-700 font-semibold mt-0.5">@{u.username}</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleUserActive(u)}
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
+                      u.is_active === 1 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                    }`}
+                  >
+                    {u.is_active === 1 ? 'Active' : 'Suspended'}
+                  </button>
+                </div>
+
+                {isSuperAdmin && (
+                  <div className="flex items-center justify-between gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                    <span className="text-slate-500 font-semibold">Password:</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-slate-900">
+                        {isRevealed ? (u.visible_password || 'balagarh2026') : '••••••••'}
+                      </span>
+                      <button type="button" onClick={() => toggleRevealUser(u.id)} className="p-1 text-slate-600">
+                        {isRevealed ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                      <button type="button" onClick={() => copyPassword(u)} className="p-1 text-slate-600">
+                        {copiedId === u.id ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <select
+                    value={u.role_id}
+                    onChange={(e) => changeUserRole(u, Number(e.target.value))}
+                    className="flex-1 px-2.5 py-2 rounded-lg border border-slate-300 bg-white font-semibold text-xs"
+                  >
+                    {roles.map((r) => <option key={r.id} value={r.id}>{r.name_en}</option>)}
+                  </select>
+                  {isSuperAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setResetTarget(u);
+                        setResetPasswordInput('');
+                      }}
+                      className="px-3 py-2 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 font-bold inline-flex items-center justify-center gap-1.5"
+                    >
+                      <KeyRound className="w-3.5 h-3.5" />
+                      <span>Reset Password</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -153,12 +379,12 @@ export const UsersRolesView: React.FC<{ currentUser: UserRecord }> = ({ currentU
         {roles.map((r) => (
           <div key={r.id} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col justify-between space-y-3">
             <div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <span className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full" style={{ backgroundColor: r.accent_color }} />
+                  <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: r.accent_color }} />
                   {r.name_en}
                 </span>
-                <span className="text-xs text-slate-500">{r.name_bn}</span>
+                <span className="text-xs text-slate-500 text-right">{r.name_bn}</span>
               </div>
               <p className="text-xs text-slate-600 mt-1.5">{r.description}</p>
               <div className="text-[11px] text-slate-500 mt-2">
@@ -168,7 +394,7 @@ export const UsersRolesView: React.FC<{ currentUser: UserRecord }> = ({ currentU
                 <strong>Actions:</strong> {r.permissions.actions.join(', ')}
               </div>
             </div>
-            {currentUser.permissions.modules.includes('*') && r.slug !== 'super_admin' && (
+            {isSuperAdmin && r.slug !== 'super_admin' && (
               <button
                 type="button"
                 onClick={() => setEditingRole(r)}
@@ -181,9 +407,71 @@ export const UsersRolesView: React.FC<{ currentUser: UserRecord }> = ({ currentU
         ))}
       </div>
 
+      {/* Super Admin Reset Password Modal */}
+      {resetTarget && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <form onSubmit={handleAdminResetPassword} className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-base sm:text-lg flex items-center gap-2 text-slate-900">
+                <KeyRound className="w-5 h-5 text-amber-600" />
+                <span>Reset User Password</span>
+              </h3>
+              <button type="button" onClick={() => setResetTarget(null)} className="p-1 rounded-lg hover:bg-slate-100">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-0.5">
+              <div className="font-bold text-slate-900">{resetTarget.full_name}</div>
+              <div className="text-slate-600">
+                Username: <span className="font-mono font-semibold">{resetTarget.username}</span> · {resetTarget.role_name_en}
+              </div>
+              <div className="text-slate-500">{resetTarget.email}</div>
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-semibold text-slate-700">New Password (min 6 chars)</label>
+                <button
+                  type="button"
+                  onClick={() => setResetPasswordInput(`Balagarh@${Math.floor(1000 + Math.random() * 9000)}`)}
+                  className="text-[11px] font-bold text-blue-700 hover:underline inline-flex items-center gap-1"
+                >
+                  <RefreshCw className="w-3 h-3" /> Generate Strong Password
+                </button>
+              </div>
+              <div className="relative">
+                <input
+                  type={showResetInput ? 'text' : 'password'}
+                  required
+                  minLength={6}
+                  value={resetPasswordInput}
+                  onChange={(e) => setResetPasswordInput(e.target.value)}
+                  placeholder="Enter new password for this user"
+                  className="w-full pl-3.5 pr-10 py-2.5 border border-slate-300 rounded-lg text-sm font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowResetInput((v) => !v)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-500"
+                >
+                  {showResetInput ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <button type="button" onClick={() => setResetTarget(null)} className="px-4 py-2 border rounded-lg text-xs font-bold">
+                Cancel
+              </button>
+              <button type="submit" className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold">
+                Reset &amp; Save Password
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {newUserOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <form onSubmit={createUser} className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-3">
+          <form onSubmit={createUser} className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-lg">Create New CMS User</h3>
               <button type="button" onClick={() => setNewUserOpen(false)}><X className="w-5 h-5" /></button>
@@ -244,7 +532,7 @@ export const UsersRolesView: React.FC<{ currentUser: UserRecord }> = ({ currentU
 
               <div>
                 <div className="text-xs font-bold text-slate-700 mb-2">Authorised Modules</div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                   {allModules.map((m) => {
                     const has = editingRole.permissions.modules.includes(m.slug);
                     return (

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Activity, Bell, Building2, CalendarDays, Crown, ExternalLink, FileText,
-  GraduationCap, HeartPulse, Home, Image as ImageIcon, LayoutDashboard, LayoutTemplate,
+  GraduationCap, HeartPulse, Home, Image as ImageIcon, KeyRound, LayoutDashboard, LayoutTemplate,
   LogOut, Megaphone, Menu, Newspaper, Plus, Shield, ShieldCheck, Tag, UploadCloud, Users, X,
 } from 'lucide-react';
 import type { ContentSection, DashboardStats, Language, UserRecord } from '../../types/cms';
@@ -45,6 +45,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [changePassOpen, setChangePassOpen] = useState(false);
+  const [currPass, setCurrPass] = useState('');
+  const [newPass, setNewPass] = useState('');
+  const [confirmPass, setConfirmPass] = useState('');
+  const [passMsg, setPassMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [passSaving, setPassSaving] = useState(false);
   const [demoUsers, setDemoUsers] = useState<Array<{ username: string; role_name_en: string; accent_color: string }>>([]);
 
   const canAccess = (mod: string) =>
@@ -71,6 +77,35 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     const nextUser = await loginDemoRole(username);
     setUser(nextUser);
     setTab({ type: 'dashboard' });
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPassMsg(null);
+    if (newPass.length < 6) {
+      setPassMsg({ type: 'err', text: 'New password must be at least 6 characters.' });
+      return;
+    }
+    if (newPass !== confirmPass) {
+      setPassMsg({ type: 'err', text: 'New passwords do not match.' });
+      return;
+    }
+    setPassSaving(true);
+    try {
+      await apiFetch('/api/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ currentPassword: currPass, newPassword: newPass }),
+      });
+      setPassMsg({ type: 'ok', text: 'Your password has been updated successfully.' });
+      setCurrPass('');
+      setNewPass('');
+      setConfirmPass('');
+      loadDashboardData();
+    } catch (err) {
+      setPassMsg({ type: 'err', text: err instanceof Error ? err.message : 'Failed to update password' });
+    } finally {
+      setPassSaving(false);
+    }
   };
 
   const kpiCards = [
@@ -157,7 +192,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   ];
 
   return (
-    <div className="min-h-screen flex bg-[#eef3f9] text-slate-900">
+    <div className="min-h-screen flex bg-[#eef3f9] text-slate-900 overflow-x-clip">
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Left Gradient Navy Sidebar */}
       <aside
         className={`fixed inset-y-0 left-0 z-40 w-64 bg-gradient-to-b from-[#081A3E] via-[#0E295E] to-[#13387A] text-white flex flex-col transition-transform duration-200 lg:static lg:translate-x-0 ${
@@ -312,6 +354,18 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         <div className="p-3 border-t border-white/10 space-y-2">
           <button
             type="button"
+            onClick={() => {
+              setSidebarOpen(false);
+              setPassMsg(null);
+              setChangePassOpen(true);
+            }}
+            className="w-full py-2 px-3 rounded-xl bg-white/10 hover:bg-blue-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+          >
+            <KeyRound className="w-3.5 h-3.5 text-amber-300" />
+            <span>{lang === 'bn' ? 'পাসওয়ার্ড পরিবর্তন' : 'Change Password'}</span>
+          </button>
+          <button
+            type="button"
             onClick={onViewPublicSite}
             className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
           >
@@ -349,13 +403,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2">
               {/* Role Quick-Switch Dropdown */}
               <select
                 value={user.username}
                 onChange={(e) => switchRole(e.target.value)}
                 title="Switch Role to test Module-Level RBAC"
-                className="px-2.5 py-1.5 rounded-lg bg-white/15 border border-white/25 text-white text-xs font-semibold focus:outline-none"
+                className="px-2 sm:px-2.5 py-1.5 rounded-lg bg-white/15 border border-white/25 text-white text-xs font-semibold focus:outline-none max-w-[145px] sm:max-w-none truncate"
               >
                 {demoUsers.map((du) => (
                   <option key={du.username} value={du.username} className="text-slate-900">
@@ -364,19 +418,33 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 ))}
               </select>
 
+              {/* Change My Password Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setPassMsg(null);
+                  setChangePassOpen(true);
+                }}
+                className="px-2.5 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 border border-white/25 text-white text-xs font-bold inline-flex items-center gap-1.5"
+                title={lang === 'bn' ? 'পাসওয়ার্ড পরিবর্তন' : 'Change Password'}
+              >
+                <KeyRound className="w-3.5 h-3.5 text-amber-300" />
+                <span className="hidden sm:inline">{lang === 'bn' ? 'পাসওয়ার্ড' : 'Change Password'}</span>
+              </button>
+
               {/* Language Switcher */}
               <div className="inline-flex bg-white/15 p-0.5 rounded-lg border border-white/20">
                 <button
                   type="button"
                   onClick={() => setLang('en')}
-                  className={`px-2.5 py-1 rounded text-xs font-bold ${lang === 'en' ? 'bg-white text-slate-900' : 'text-white'}`}
+                  className={`px-2 sm:px-2.5 py-1 rounded text-xs font-bold ${lang === 'en' ? 'bg-white text-slate-900' : 'text-white'}`}
                 >
                   EN
                 </button>
                 <button
                   type="button"
                   onClick={() => setLang('bn')}
-                  className={`px-2.5 py-1 rounded text-xs font-bold ${lang === 'bn' ? 'bg-emerald-500 text-white' : 'text-white'}`}
+                  className={`px-2 sm:px-2.5 py-1 rounded text-xs font-bold ${lang === 'bn' ? 'bg-emerald-500 text-white' : 'text-white'}`}
                 >
                   বাংলা
                 </button>
@@ -396,7 +464,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   </span>
                 </button>
                 {notifOpen && (
-                  <div className="absolute right-0 mt-2 w-80 bg-white text-slate-900 rounded-xl shadow-2xl border border-slate-200 z-50 overflow-hidden">
+                  <div className="absolute right-0 mt-2 w-72 sm:w-80 max-w-[calc(100vw-2rem)] bg-white text-slate-900 rounded-xl shadow-2xl border border-slate-200 z-50 overflow-hidden">
                     <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 font-bold text-xs flex items-center justify-between">
                       <span>Recent CMS Activity</span>
                       <button type="button" onClick={() => setNotifOpen(false)}><X className="w-4 h-4" /></button>
@@ -416,10 +484,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               <button
                 type="button"
                 onClick={onViewPublicSite}
-                className="px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-extrabold inline-flex items-center gap-1.5 whitespace-nowrap"
+                className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-extrabold inline-flex items-center gap-1.5 whitespace-nowrap"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
-                <span>Public Site</span>
+                <span className="hidden sm:inline">Public Site</span>
               </button>
             </div>
           </div>
@@ -674,6 +742,103 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
           {tab.type === 'logs' && <ActivityLogsView />}
         </main>
       </div>
+
+      {/* Change Password Modal (Available to Any Signed-In User) */}
+      {changePassOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden">
+            <div className="bg-gradient-to-r from-[#0B2C52] to-[#1D4ED8] text-white px-5 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2 font-bold text-base">
+                <KeyRound className="w-5 h-5 text-amber-300" />
+                <span>{lang === 'bn' ? 'পাসওয়ার্ড পরিবর্তন করুন' : 'Change Account Password'}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setChangePassOpen(false)}
+                className="p-1 rounded-lg hover:bg-white/20"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleChangePassword} className="p-5 space-y-4">
+              <div className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-xl p-3">
+                Signed in as <strong className="text-slate-900">{user.full_name}</strong> (
+                <span className="font-mono">{user.username}</span>)
+              </div>
+
+              {passMsg && (
+                <div
+                  className={`p-3 rounded-lg text-xs font-medium border ${
+                    passMsg.type === 'ok'
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                      : 'bg-red-50 border-red-200 text-red-700'
+                  }`}
+                >
+                  {passMsg.text}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Current Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={currPass}
+                  onChange={(e) => setCurrPass(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  New Password (min 6 characters)
+                </label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={newPass}
+                  onChange={(e) => setNewPass(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Confirm New Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={confirmPass}
+                  onChange={(e) => setConfirmPass(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setChangePassOpen(false)}
+                  className="px-4 py-2 rounded-lg border border-slate-300 text-xs font-bold text-slate-700"
+                >
+                  Close
+                </button>
+                <button
+                  type="submit"
+                  disabled={passSaving}
+                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold"
+                >
+                  {passSaving ? 'Updating...' : 'Update Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

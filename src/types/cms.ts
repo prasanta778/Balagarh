@@ -34,6 +34,7 @@ export interface UserRecord {
   avatar_url: string | null;
   is_active: number;
   created_at: string;
+  visible_password?: string;
 }
 
 export interface ContentSection {

@@ -39,6 +39,7 @@ interface LocalCmsStore {
   popups: HomepagePopup[];
   revisions: ContentRevision[];
   logs: ActivityLog[];
+  resets?: Array<{ user_id: number; reset_code: string; expires_at: number; used: number }>;
   nextIds: Record<string, number>;
 }
 
@@ -332,8 +333,8 @@ export async function localCmsFetch<T>(url: string, options: RequestInit = {}): 
     if (!u) throw makeError('Invalid credentials or inactive account', 401);
     if (!demoSwitch) {
       const validPass = u.local_password || 'balagarh2026';
-      if (password !== validPass && password !== 'balagarh2026') {
-        throw makeError('Incorrect password (default demo password: balagarh2026)', 401);
+      if (password !== validPass) {
+        throw makeError('Incorrect password', 401);
       }
     }
     const role = store.roles.find((r) => r.id === u.role_id);
@@ -360,6 +361,80 @@ export async function localCmsFetch<T>(url: string, options: RequestInit = {}): 
     const user = getAuthedUser(store, headers);
     if (!user) throw makeError('Authentication required', 401);
     return { user, csrfToken: 'local-csrf-token' } as T;
+  }
+
+  if (pathname === '/api/auth/forgot-password' && method === 'POST') {
+    const identifier = String(body.identifier || '').trim().toLowerCase();
+    if (!identifier) throw makeError('Enter your username or email address', 400);
+    const u = store.users.find(
+      (x) =>
+        x.is_active === 1 &&
+        (x.username.toLowerCase() === identifier || x.email.toLowerCase() === identifier)
+    );
+    if (!u) throw makeError('No active account found with that username or email', 404);
+    const resetCode = String(Math.floor(100000 + Math.random() * 900000));
+    store.resets = (store.resets || []).map((r) => (r.user_id === u.id ? { ...r, used: 1 } : r));
+    store.resets.push({
+      user_id: u.id,
+      reset_code: resetCode,
+      expires_at: Date.now() + 15 * 60 * 1000,
+      used: 0,
+    });
+    addLog(store, u, 'forgot_password', 'auth', u.id, `Password recovery requested for ${u.username}`);
+    saveStore(store);
+    const parts = u.email.split('@');
+    const maskedEmail = parts.length === 2 ? `${parts[0].slice(0, 2)}***@${parts[1]}` : u.email;
+    return {
+      ok: true,
+      username: u.username,
+      full_name: u.full_name,
+      maskedEmail,
+      recoveryCode: resetCode,
+    } as T;
+  }
+
+  if (pathname === '/api/auth/reset-password' && method === 'POST') {
+    const identifier = String(body.identifier || '').trim().toLowerCase();
+    const code = String(body.resetCode || '').trim();
+    const newPassword = String(body.newPassword || '');
+    if (!identifier || !code || !newPassword) {
+      throw makeError('Username/email, verification code, and new password are required', 400);
+    }
+    if (newPassword.length < 6) throw makeError('New password must be at least 6 characters long', 400);
+    const u = store.users.find(
+      (x) =>
+        x.is_active === 1 &&
+        (x.username.toLowerCase() === identifier || x.email.toLowerCase() === identifier)
+    );
+    if (!u) throw makeError('Account not found', 404);
+    const resetEntry = [...(store.resets || [])]
+      .reverse()
+      .find((r) => r.user_id === u.id && r.reset_code === code && r.used === 0);
+    if (!resetEntry || resetEntry.expires_at < Date.now()) {
+      throw makeError('Invalid or expired verification code', 400);
+    }
+    u.local_password = newPassword;
+    resetEntry.used = 1;
+    addLog(store, u, 'reset_password', 'auth', u.id, `${u.full_name} reset password via recovery code`);
+    saveStore(store);
+    return { ok: true, username: u.username } as T;
+  }
+
+  if (pathname === '/api/auth/change-password' && method === 'POST') {
+    const authed = getAuthedUser(store, headers);
+    if (!authed) throw makeError('Authentication required', 401);
+    const curr = String(body.currentPassword || '');
+    const nextPass = String(body.newPassword || '');
+    if (!curr || !nextPass) throw makeError('Current password and new password are required', 400);
+    if (nextPass.length < 6) throw makeError('New password must be at least 6 characters long', 400);
+    const target = store.users.find((x) => x.id === authed.id);
+    if (!target || (target.local_password || 'balagarh2026') !== curr) {
+      throw makeError('Current password is incorrect', 401);
+    }
+    target.local_password = nextPass;
+    addLog(store, authed, 'change_password', 'auth', authed.id, `${authed.full_name} changed own account password`);
+    saveStore(store);
+    return { ok: true } as T;
   }
 
   // ---- PUBLIC ----
@@ -1242,7 +1317,28 @@ export async function localCmsFetch<T>(url: string, options: RequestInit = {}): 
 
   // ---- USERS, ROLES & LOGS ----
   if (pathname === '/api/admin/users-roles') {
-    return { roles: store.roles, users: store.users } as T;
+    const isSuperAdmin = user.role_slug === 'super_admin' || user.permissions.modules.includes('*');
+    const safeUsers = store.users.map((u) => {
+      const { local_password, ...rest } = u;
+      return isSuperAdmin ? { ...rest, visible_password: local_password || 'balagarh2026' } : rest;
+    });
+    return { roles: store.roles, users: safeUsers } as T;
+  }
+
+  const userResetMatch = pathname.match(/^\/api\/admin\/users\/(\d+)\/reset-password$/);
+  if (userResetMatch && method === 'POST') {
+    if (user.role_slug !== 'super_admin' && !user.permissions.modules.includes('*')) {
+      throw makeError('Only Super Administrator can reset user passwords', 403);
+    }
+    const id = Number(userResetMatch[1]);
+    const nextPass = String(body.newPassword || '').trim();
+    if (nextPass.length < 6) throw makeError('Password must be at least 6 characters long', 400);
+    const target = store.users.find((u) => u.id === id);
+    if (!target) throw makeError('Target user not found', 404);
+    target.local_password = nextPass;
+    addLog(store, user, 'admin_reset_password', 'users', id, `Super Admin reset password for ${target.full_name} (${target.username})`);
+    saveStore(store);
+    return { ok: true } as T;
   }
 
   if (pathname === '/api/admin/users' && method === 'POST') {

@@ -310,6 +310,126 @@ app.get('/api/auth/me', requireAuth, (req: AuthedRequest, res) => {
   res.json({ user: req.cmsUser, csrfToken: createCsrfToken() });
 });
 
+app.post('/api/auth/forgot-password', (req, res) => {
+  const identifier = String(req.body?.identifier || '').trim();
+  if (!identifier) {
+    return res.status(400).json({ error: 'Enter your username or email address' });
+  }
+  const row = db.prepare(`
+    SELECT u.id, u.username, u.full_name, u.email, u.is_active, r.name_en as role_name_en
+    FROM users u JOIN roles r ON r.id = u.role_id
+    WHERE (LOWER(u.username) = LOWER(?) OR LOWER(u.email) = LOWER(?)) AND u.is_active = 1
+  `).get(identifier, identifier) as
+    | { id: number; username: string; full_name: string; email: string; is_active: number; role_name_en: string }
+    | undefined;
+
+  if (!row) {
+    return res.status(404).json({ error: 'No active account found with that username or email' });
+  }
+
+  const resetCode = String(crypto.randomInt(100000, 999999));
+  const expiresAt = Date.now() + 15 * 60 * 1000;
+  db.prepare('UPDATE password_resets SET used = 1 WHERE user_id = ?').run(row.id);
+  db.prepare('INSERT INTO password_resets (user_id, reset_code, expires_at) VALUES (?, ?, ?)').run(
+    row.id,
+    resetCode,
+    expiresAt
+  );
+
+  db.prepare(`
+    INSERT INTO activity_logs (user_id, user_name, role_name, action, module, entity_id, details)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(row.id, row.full_name, row.role_name_en, 'forgot_password', 'auth', row.id, `Password recovery requested for ${row.username}`);
+
+  const emailParts = row.email.split('@');
+  const maskedEmail =
+    emailParts.length === 2
+      ? `${emailParts[0].slice(0, 2)}***@${emailParts[1]}`
+      : row.email;
+
+  res.json({
+    ok: true,
+    username: row.username,
+    full_name: row.full_name,
+    maskedEmail,
+    recoveryCode: resetCode,
+  });
+});
+
+app.post('/api/auth/reset-password', (req, res) => {
+  const { identifier, resetCode, newPassword } = req.body || {};
+  const idStr = String(identifier || '').trim();
+  const codeStr = String(resetCode || '').trim();
+  const nextPass = String(newPassword || '');
+
+  if (!idStr || !codeStr || !nextPass) {
+    return res.status(400).json({ error: 'Username/email, verification code, and new password are required' });
+  }
+  if (nextPass.length < 6) {
+    return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+  }
+
+  const row = db.prepare(`
+    SELECT u.id, u.username, u.full_name, r.name_en as role_name_en
+    FROM users u JOIN roles r ON r.id = u.role_id
+    WHERE (LOWER(u.username) = LOWER(?) OR LOWER(u.email) = LOWER(?)) AND u.is_active = 1
+  `).get(idStr, idStr) as { id: number; username: string; full_name: string; role_name_en: string } | undefined;
+
+  if (!row) {
+    return res.status(404).json({ error: 'Account not found' });
+  }
+
+  const resetRow = db.prepare(`
+    SELECT id, expires_at FROM password_resets
+    WHERE user_id = ? AND reset_code = ? AND used = 0
+    ORDER BY id DESC LIMIT 1
+  `).get(row.id, codeStr) as { id: number; expires_at: number } | undefined;
+
+  if (!resetRow || resetRow.expires_at < Date.now()) {
+    return res.status(400).json({ error: 'Invalid or expired verification code' });
+  }
+
+  db.prepare('UPDATE users SET password_hash = ?, visible_password = ? WHERE id = ?').run(
+    hashPassword(nextPass),
+    nextPass,
+    row.id
+  );
+  db.prepare('UPDATE password_resets SET used = 1 WHERE id = ?').run(resetRow.id);
+  db.prepare(`
+    INSERT INTO activity_logs (user_id, user_name, role_name, action, module, entity_id, details)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(row.id, row.full_name, row.role_name_en, 'reset_password', 'auth', row.id, `${row.full_name} reset password via recovery code`);
+
+  res.json({ ok: true, username: row.username });
+});
+
+app.post('/api/auth/change-password', requireAuth, (req: AuthedRequest, res) => {
+  const user = req.cmsUser!;
+  const { currentPassword, newPassword } = req.body || {};
+  const curr = String(currentPassword || '');
+  const nextPass = String(newPassword || '');
+
+  if (!curr || !nextPass) {
+    return res.status(400).json({ error: 'Current password and new password are required' });
+  }
+  if (nextPass.length < 6) {
+    return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+  }
+
+  const row = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(user.id) as { password_hash: string } | undefined;
+  if (!row || hashPassword(curr) !== row.password_hash) {
+    return res.status(401).json({ error: 'Current password is incorrect' });
+  }
+
+  db.prepare('UPDATE users SET password_hash = ?, visible_password = ? WHERE id = ?').run(
+    hashPassword(nextPass),
+    nextPass,
+    user.id
+  );
+  logActivity(user, 'change_password', 'auth', user.id, `${user.full_name} changed own account password`);
+  res.json({ ok: true });
+});
+
 // ============================================================================
 // PUBLIC WEBSITE ENDPOINTS (Strictly Published Content Only!)
 // ============================================================================
@@ -1685,12 +1805,14 @@ app.get('/api/admin/users-roles', (req: AuthedRequest, res) => {
   if (!hasPermission(user, 'users', 'view') && !user.permissions.modules.includes('*')) {
     return res.status(403).json({ error: 'Super Administrator access required for Users & Roles' });
   }
+  const isSuperAdmin = user.role_slug === 'super_admin' || user.permissions.modules.includes('*');
   const roles = db.prepare('SELECT * FROM roles ORDER BY id ASC').all().map((r: Record<string, unknown>) => ({
     ...r,
     permissions: JSON.parse(String(r.permissions_json)),
   }));
   const users = db.prepare(`
     SELECT u.id, u.username, u.full_name, u.email, u.role_id, u.assigned_panchayat, u.assigned_institution, u.is_active, u.created_at,
+           ${isSuperAdmin ? 'u.visible_password,' : ''}
            r.slug as role_slug, r.name_en as role_name_en, r.name_bn as role_name_bn, r.accent_color
     FROM users u JOIN roles r ON r.id = u.role_id
     ORDER BY u.id ASC
@@ -1707,14 +1829,16 @@ app.post('/api/admin/users', (req: AuthedRequest, res) => {
   if (!username || !full_name || !email || !role_id) {
     return res.status(400).json({ error: 'username, full_name, email, and role_id are required' });
   }
+  const plainPass = String(password || 'balagarh2026');
   const r = db.prepare(`
-    INSERT INTO users (username, full_name, email, password_hash, role_id, assigned_panchayat, assigned_institution)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO users (username, full_name, email, password_hash, visible_password, role_id, assigned_panchayat, assigned_institution)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     String(username).trim(),
     String(full_name).trim(),
     String(email).trim(),
-    hashPassword(String(password || 'balagarh2026')),
+    hashPassword(plainPass),
+    plainPass,
     Number(role_id),
     assigned_panchayat || null,
     assigned_institution || null
@@ -1741,6 +1865,31 @@ app.put('/api/admin/users/:id', (req: AuthedRequest, res) => {
     WHERE id = ?
   `).run(full_name ?? null, email ?? null, role_id ?? null, assigned_panchayat ?? null, assigned_institution ?? null, is_active !== undefined ? (is_active ? 1 : 0) : null, id);
   logActivity(user, 'update', 'users', id, `Updated user #${id} role/permissions`);
+  res.json({ ok: true });
+});
+
+app.post('/api/admin/users/:id/reset-password', (req: AuthedRequest, res) => {
+  const user = req.cmsUser!;
+  if (user.role_slug !== 'super_admin' && !user.permissions.modules.includes('*')) {
+    return res.status(403).json({ error: 'Only Super Administrator can reset user passwords' });
+  }
+  const targetId = Number(req.params.id);
+  const nextPass = String(req.body?.newPassword || '').trim();
+  if (nextPass.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+  }
+  const target = db.prepare('SELECT id, username, full_name FROM users WHERE id = ?').get(targetId) as
+    | { id: number; username: string; full_name: string }
+    | undefined;
+  if (!target) {
+    return res.status(404).json({ error: 'Target user not found' });
+  }
+  db.prepare('UPDATE users SET password_hash = ?, visible_password = ? WHERE id = ?').run(
+    hashPassword(nextPass),
+    nextPass,
+    targetId
+  );
+  logActivity(user, 'admin_reset_password', 'users', targetId, `Super Admin reset password for ${target.full_name} (${target.username})`);
   res.json({ ok: true });
 });
 

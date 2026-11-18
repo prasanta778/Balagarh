@@ -152,16 +152,17 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
 }) => {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [expandedMobileGroup, setExpandedMobileGroup] = useState<string | null>('About Balagarh');
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#eef4fb] text-slate-900" style={{ fontSize: `${fontScale}%` }}>
+    <div className="min-h-screen flex flex-col bg-[#eef4fb] text-slate-900 overflow-x-clip" style={{ fontSize: `${fontScale}%` }}>
       {/* Top Crisp Light Utility Strip */}
-      <div className="bg-slate-50 text-slate-700 text-xs border-b border-slate-200">
-        <div className="max-w-[1280px] mx-auto px-4 py-1.5 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-4">
-            <span className="inline-flex items-center gap-1.5 font-medium">
+      <div className="bg-slate-50 text-slate-700 text-[11px] sm:text-xs border-b border-slate-200">
+        <div className="max-w-[1280px] mx-auto px-3 sm:px-4 py-1.5 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4 min-w-0">
+            <span className="inline-flex items-center gap-1.5 font-medium truncate">
               <MapPin className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-              <span>{lang === 'bn' ? 'বলাগড় ব্লক, হুগলি, পশ্চিমবঙ্গ – ৭১২৫০১' : 'Balagarh Block, Hooghly, West Bengal – 712501'}</span>
+              <span className="truncate">{lang === 'bn' ? 'বলাগড় ব্লক, হুগলি, পশ্চিমবঙ্গ – ৭১২৫০১' : 'Balagarh Block, Hooghly, WB – 712501'}</span>
             </span>
             <span className="hidden sm:inline-flex items-center gap-1.5 tabular-nums font-medium">
               <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
@@ -223,14 +224,14 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
 
       {/* Main Colorful Brand & Search Header */}
       <header className="bg-white">
-        <div className="max-w-[1280px] mx-auto px-4 py-3.5 flex flex-col lg:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
+        <div className="max-w-[1280px] mx-auto px-3 sm:px-4 py-3 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 lg:gap-4">
+          <div className="flex items-center justify-between gap-3 w-full lg:w-auto">
             <button
               type="button"
               onClick={() => onNavigate('/')}
-              className="flex items-center gap-3.5 text-left group shrink-0"
+              className="flex items-center gap-3 text-left group min-w-0"
             >
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-500 via-sky-500 to-amber-400 p-0.5 shadow-md shrink-0">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-emerald-500 via-sky-500 to-amber-400 p-0.5 shadow-md shrink-0">
                 <div className="w-full h-full rounded-full bg-white overflow-hidden">
                   <img
                     src="/uploads/guptipara_terracotta_temple.jpg"
@@ -239,19 +240,19 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
                   />
                 </div>
               </div>
-              <div>
-                <div className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-none text-[#15438C]">
+              <div className="min-w-0">
+                <div className="text-xl sm:text-3xl font-extrabold tracking-tight leading-none text-[#15438C] truncate">
                   {lang === 'bn' ? 'আমাদের বলাগড়' : 'Our Balagarh'}
                 </div>
-                <div className="text-xs sm:text-sm font-semibold text-slate-700 mt-1">
+                <div className="text-[11px] sm:text-sm font-semibold text-slate-700 mt-1 line-clamp-1">
                   {lang === 'bn'
-                    ? 'বলাগড় ব্লকের সরকারি ও সাধারণ তথ্যের একমাত্র পোর্টাল'
-                    : 'The Official Information Portal of Balagarh Block'}
+                    ? 'বলাগড় ব্লকের সরকারি ও সাধারণ তথ্যের পোর্টাল'
+                    : 'Official Information Portal of Balagarh Block'}
                 </div>
               </div>
             </button>
 
-            <div className="hidden xl:block pl-4 border-l-2 border-amber-400 text-sm italic font-bold text-[#1D4ED8] leading-snug">
+            <div className="hidden xl:block pl-4 border-l-2 border-amber-400 text-sm italic font-bold text-[#1D4ED8] leading-snug shrink-0">
               {lang === 'bn' ? (
                 <>
                   বলাগড় ব্লক, হুগলির
@@ -266,11 +267,21 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
                 </>
               )}
             </div>
+
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen((o) => !o)}
+              className="lg:hidden p-2 rounded-lg border border-slate-200 bg-slate-50 text-[#15438C] hover:bg-slate-100 shrink-0"
+              aria-label="Toggle Menu"
+              aria-expanded={mobileMenuOpen}
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-3 w-full lg:w-auto">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2.5 w-full lg:w-auto">
             {/* Bilingual Language Switcher */}
-            <div className="inline-flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg border border-slate-200 shrink-0">
+            <div className="inline-flex items-center justify-center gap-1.5 bg-slate-100 p-1 rounded-lg border border-slate-200 shrink-0 self-start sm:self-auto">
               <Globe className="w-4 h-4 text-blue-600 ml-1.5" />
               <button
                 type="button"
@@ -299,39 +310,63 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
             {/* Search Bar */}
             <form
               onSubmit={onSearchSubmit}
-              className="flex items-center border border-slate-300 rounded-lg overflow-hidden bg-white focus-within:ring-2 focus-within:ring-blue-500 w-full sm:w-72 shadow-xs"
+              className="flex items-center border border-slate-300 rounded-lg overflow-hidden bg-white focus-within:ring-2 focus-within:ring-blue-500 w-full sm:w-72 shadow-xs min-w-0"
             >
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={lang === 'bn' ? 'স্কুল, পঞ্চায়েত, খবর খুঁজুন...' : 'Search for schools, panchayats, news...'}
-                className="w-full px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none"
+                placeholder={lang === 'bn' ? 'স্কুল, পঞ্চায়েত, খবর খুঁজুন...' : 'Search schools, panchayats, news...'}
+                className="w-full min-w-0 px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none"
               />
               <button
                 type="submit"
-                className="px-3.5 py-2 bg-gradient-to-r from-[#1565C0] to-[#0284C7] text-white hover:brightness-110 transition-all"
+                className="px-3.5 py-2 bg-gradient-to-r from-[#1565C0] to-[#0284C7] text-white hover:brightness-110 transition-all shrink-0"
                 aria-label="Search"
               >
                 <Search className="w-4 h-4" />
               </button>
             </form>
-
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen((o) => !o)}
-              className="lg:hidden p-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100"
-              aria-label="Toggle Menu"
-            >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
           </div>
         </div>
       </header>
 
       {/* Vibrant Blue Navigation Bar with Multi-Color Bottom Accent Ribbon */}
       <nav className="bg-[#276CF5] text-white sticky top-0 z-30 shadow-md">
-        <div className="max-w-[1280px] mx-auto px-4">
+        <div className="max-w-[1280px] mx-auto px-3 sm:px-4">
+          {/* Mobile Sticky Bar */}
+          <div className="flex lg:hidden items-center justify-between gap-2 py-2">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen((o) => !o)}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-xs font-extrabold whitespace-nowrap shrink-0"
+            >
+              {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+              <span>{lang === 'bn' ? 'মেনু' : 'Menu'}</span>
+            </button>
+
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+              {[
+                { label: lang === 'bn' ? 'হোম' : 'Home', route: '/' },
+                { label: lang === 'bn' ? 'বিজ্ঞপ্তি' : 'Notices', route: '/section/notices-circulars' },
+                { label: lang === 'bn' ? 'খবর' : 'News', route: '/section/news-announcements' },
+                { label: lang === 'bn' ? 'ইভেন্ট' : 'Events', route: '/events' },
+                { label: lang === 'bn' ? 'যোগাযোগ' : 'Contact', route: '/section/contact-information' },
+              ].map((quick) => (
+                <button
+                  key={quick.route}
+                  type="button"
+                  onClick={() => { setMobileMenuOpen(false); onNavigate(quick.route); }}
+                  className={`px-2.5 py-1 rounded-md text-xs font-bold whitespace-nowrap shrink-0 transition-colors ${
+                    currentRoute === quick.route ? 'bg-amber-400 text-slate-950' : 'text-white/95 hover:bg-white/15'
+                  }`}
+                >
+                  {quick.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="hidden lg:flex items-center justify-between gap-0.5">
             {NAV_GROUPS.map((group) => {
               const hasChildren = Boolean(group.children && group.children.length > 0);
@@ -386,36 +421,52 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
           </div>
 
           {mobileMenuOpen && (
-            <div className="lg:hidden py-3 space-y-2 border-t border-white/15">
-              {NAV_GROUPS.map((group) => (
-                <div key={group.label_en} className="space-y-1">
-                  {group.route ? (
-                    <button
-                      type="button"
-                      onClick={() => { setMobileMenuOpen(false); onNavigate(group.route!); }}
-                      className="block w-full text-left px-3 py-1.5 text-sm font-bold text-amber-300 hover:bg-white/10 rounded"
-                    >
-                      {lang === 'bn' ? group.label_bn : group.label_en}
-                    </button>
-                  ) : (
-                    <>
-                      <div className="px-3 py-1 text-xs font-bold text-amber-300">
+            <div className="lg:hidden py-2.5 space-y-1 border-t border-white/20 max-h-[70vh] overflow-y-auto">
+              {NAV_GROUPS.map((group) => {
+                const isExpanded = expandedMobileGroup === group.label_en;
+                return (
+                  <div key={group.label_en} className="rounded-lg overflow-hidden bg-white/5">
+                    {group.route ? (
+                      <button
+                        type="button"
+                        onClick={() => { setMobileMenuOpen(false); onNavigate(group.route!); }}
+                        className={`block w-full text-left px-3 py-2 text-sm font-bold hover:bg-white/15 ${
+                          currentRoute === group.route ? 'text-amber-300 bg-white/10' : 'text-white'
+                        }`}
+                      >
                         {lang === 'bn' ? group.label_bn : group.label_en}
-                      </div>
-                      {group.children?.map((item) => (
+                      </button>
+                    ) : (
+                      <>
                         <button
-                          key={item.route}
                           type="button"
-                          onClick={() => { setMobileMenuOpen(false); onNavigate(item.route); }}
-                          className="block w-full text-left px-5 py-1.5 text-sm hover:bg-white/10 rounded"
+                          onClick={() => setExpandedMobileGroup(isExpanded ? null : group.label_en)}
+                          className="w-full flex items-center justify-between px-3 py-2 text-sm font-bold text-amber-300 hover:bg-white/10"
                         >
-                          {lang === 'bn' ? item.label_bn : item.label_en}
+                          <span>{lang === 'bn' ? group.label_bn : group.label_en}</span>
+                          <ChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                         </button>
-                      ))}
-                    </>
-                  )}
-                </div>
-              ))}
+                        {isExpanded && (
+                          <div className="bg-black/15 py-1">
+                            {group.children?.map((item) => (
+                              <button
+                                key={item.route}
+                                type="button"
+                                onClick={() => { setMobileMenuOpen(false); onNavigate(item.route); }}
+                                className={`block w-full text-left px-5 py-1.5 text-xs sm:text-sm hover:bg-white/15 ${
+                                  currentRoute === item.route ? 'text-amber-300 font-bold' : 'text-white/95'
+                                }`}
+                              >
+                                • {lang === 'bn' ? item.label_bn : item.label_en}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -776,9 +827,9 @@ export const PublicHome: React.FC<PublicHomeProps> = ({ data, lang, onNavigate }
         ];
 
         return (
-          <section key={key} className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+          <section key={key} className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch min-w-0">
             {/* Hero Carousel with Running Video / Scenic Motion Background */}
-            <div className="lg:col-span-8 relative rounded-2xl overflow-hidden shadow-xl ring-2 ring-sky-400/50 border-2 border-white min-h-[300px] sm:min-h-[355px] bg-slate-900">
+            <div className="lg:col-span-8 min-w-0 relative rounded-2xl overflow-hidden shadow-xl ring-2 ring-sky-400/50 border-2 border-white min-h-[300px] sm:min-h-[355px] bg-slate-900">
               {activeBanner ? (
                 <>
                   <HeroVideoBackdrop
@@ -789,29 +840,29 @@ export const PublicHome: React.FC<PublicHomeProps> = ({ data, lang, onNavigate }
                   {/* div:nth-of-type(1) — Clear background (no glass overlay over video/image) */}
                   <div className="pointer-events-none" />
                   {/* div:nth-of-type(2) — Hero Content Overlay */}
-                  <div className="relative z-10 h-full flex flex-col justify-center px-12 sm:px-14 py-8 text-white">
-                    <div className="mb-3 flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-sky-400 text-slate-950 text-[11px] font-extrabold shadow-md">
+                  <div className="relative z-10 h-full flex flex-col justify-center px-10 sm:px-14 pt-6 pb-14 sm:py-8 text-white">
+                    <div className="mb-2.5 sm:mb-3 flex flex-wrap items-center gap-1.5 sm:gap-2">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-sky-400 text-slate-950 text-[10px] sm:text-[11px] font-extrabold shadow-md">
                         <span className={`w-2 h-2 rounded-full bg-rose-600 ${videoBgPlaying ? 'animate-ping' : ''}`} />
                         <Sparkles className="w-3.5 h-3.5" />
                         <span>{lang === 'bn' ? 'আমাদের বলাগড় • হুগলি ঐতিহ্য' : 'Our Balagarh • Hooghly Heritage'}</span>
                       </span>
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-700 border border-indigo-400 text-amber-200 text-[11px] font-bold shadow">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-700 border border-indigo-400 text-amber-200 text-[10px] sm:text-[11px] font-bold shadow">
                         <Video className="w-3 h-3" />
                         <span>{videoBgPlaying ? (lang === 'bn' ? 'লাইভ মোশন ব্যাকগ্রাউন্ড' : 'Live Video BG') : (lang === 'bn' ? 'বিরতি' : 'Paused')}</span>
                       </span>
                     </div>
-                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold leading-tight text-balance max-w-xl drop-shadow-[0_3px_10px_rgba(0,0,0,0.9)]">
+                    <h1 className="text-xl sm:text-3xl lg:text-4xl font-extrabold leading-tight text-balance max-w-xl drop-shadow-[0_3px_10px_rgba(0,0,0,0.9)]">
                       {bi(lang, activeBanner.title_en, activeBanner.title_bn)}
                     </h1>
-                    <p className="text-sm sm:text-base text-white font-semibold mt-2.5 max-w-lg leading-relaxed drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+                    <p className="text-xs sm:text-base text-white font-semibold mt-2 sm:mt-2.5 max-w-lg leading-relaxed drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
                       {bi(lang, activeBanner.subtitle_en, activeBanner.subtitle_bn)}
                     </p>
-                    <div className="mt-5 flex flex-wrap items-center gap-3">
+                    <div className="mt-4 sm:mt-5 flex flex-wrap items-center gap-2.5 sm:gap-3">
                       <button
                         type="button"
                         onClick={() => onNavigate(activeBanner.button_link || '/section/about-balagarh')}
-                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-[#FDE047] via-[#FACC15] to-[#F97316] hover:brightness-105 text-slate-950 text-sm font-extrabold transition-all shadow-lg shadow-amber-500/30"
+                        className="inline-flex items-center gap-1.5 sm:gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full bg-gradient-to-r from-[#FDE047] via-[#FACC15] to-[#F97316] hover:brightness-105 text-slate-950 text-xs sm:text-sm font-extrabold transition-all shadow-lg shadow-amber-500/30"
                       >
                         <span>{bi(lang, activeBanner.button_text_en, activeBanner.button_text_bn)}</span>
                         <ArrowRight className="w-4 h-4" />
@@ -819,9 +870,9 @@ export const PublicHome: React.FC<PublicHomeProps> = ({ data, lang, onNavigate }
                       <button
                         type="button"
                         onClick={() => onNavigate('/section/video-gallery')}
-                        className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-gradient-to-r from-[#EC4899] to-[#8B5CF6] hover:brightness-110 text-white text-sm font-extrabold transition-all shadow-lg shadow-fuchsia-600/30 border border-white/40"
+                        className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-full bg-gradient-to-r from-[#EC4899] to-[#8B5CF6] hover:brightness-110 text-white text-xs sm:text-sm font-extrabold transition-all shadow-lg shadow-fuchsia-600/30 border border-white/40"
                       >
-                        <Play className="w-4 h-4 fill-current" />
+                        <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />
                         <span>{lang === 'bn' ? 'ভিডিও দেখুন' : 'Watch Videos'}</span>
                       </button>
                     </div>
@@ -831,20 +882,20 @@ export const PublicHome: React.FC<PublicHomeProps> = ({ data, lang, onNavigate }
                       <button
                         type="button"
                         onClick={() => setSlideIdx((i) => (i - 1 + banners.length) % banners.length)}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 hover:brightness-110 text-white border border-white/60 flex items-center justify-center transition-all shadow-md"
+                        className="absolute left-1.5 sm:left-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 hover:brightness-110 text-white border border-white/60 flex items-center justify-center transition-all shadow-md"
                         aria-label="Previous slide"
                       >
-                        <ChevronLeft className="w-5 h-5" />
+                        <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
                       </button>
                       <button
                         type="button"
                         onClick={() => setSlideIdx((i) => (i + 1) % banners.length)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-gradient-to-br from-rose-600 to-purple-700 hover:brightness-110 text-white border border-white/60 flex items-center justify-center transition-all shadow-md"
+                        className="absolute right-1.5 sm:right-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-rose-600 to-purple-700 hover:brightness-110 text-white border border-white/60 flex items-center justify-center transition-all shadow-md"
                         aria-label="Next slide"
                       >
-                        <ChevronRight className="w-5 h-5" />
+                        <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
                       </button>
-                      <div className="absolute bottom-3.5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5">
+                      <div className="absolute bottom-4 left-4 sm:left-1/2 sm:-translate-x-1/2 z-20 flex items-center gap-1.5">
                         {banners.map((b, idx) => (
                           <button
                             key={b.id}
@@ -873,7 +924,7 @@ export const PublicHome: React.FC<PublicHomeProps> = ({ data, lang, onNavigate }
             </div>
 
             {/* Latest Notice Card (Vibrant Multi-Color Header & Pastel Notice Cards) */}
-            <div className="lg:col-span-4 bg-white rounded-2xl border-2 border-rose-300/80 shadow-xl overflow-hidden flex flex-col">
+            <div className="lg:col-span-4 min-w-0 bg-white rounded-2xl border-2 border-rose-300/80 shadow-xl overflow-hidden flex flex-col">
               {/* div:nth-of-type(1) — Vibrant Multi-Color Header */}
               <div className="bg-gradient-to-r from-[#E11D48] via-[#C026D3] to-[#7C3AED] text-white px-4 py-3 flex items-center justify-between gap-2 font-extrabold text-sm border-b-2 border-amber-300">
                 <div className="flex items-center gap-2">
@@ -928,14 +979,14 @@ export const PublicHome: React.FC<PublicHomeProps> = ({ data, lang, onNavigate }
             </div>
 
             {/* div:nth-of-type(3) — Full-Width Colorful Running Text / Live Announcements Ticker */}
-            <div className="lg:col-span-12 rounded-xl overflow-hidden shadow-md border border-indigo-300/70 bg-gradient-to-r from-[#1E3A8A] via-[#7C3AED] via-[#DB2777] to-[#0D9488] text-white flex items-stretch">
-              <div className="px-3.5 sm:px-4 py-2 bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 text-slate-950 font-extrabold text-xs sm:text-sm flex items-center gap-2 shrink-0 shadow-md z-10">
-                <Radio className="w-4 h-4 animate-pulse text-white" />
+            <div className="lg:col-span-12 min-w-0 max-w-full rounded-xl overflow-hidden shadow-md border border-indigo-300/70 bg-gradient-to-r from-[#1E3A8A] via-[#7C3AED] via-[#DB2777] to-[#0D9488] text-white flex items-stretch">
+              <div className="px-2.5 sm:px-4 py-2 bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 text-slate-950 font-extrabold text-[11px] sm:text-sm flex items-center gap-1.5 sm:gap-2 shrink-0 shadow-md z-10">
+                <Radio className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-pulse text-white" />
                 <span className="text-white drop-shadow-xs whitespace-nowrap">
                   {lang === 'bn' ? 'সর্বশেষ আপডেট' : 'LIVE UPDATES'}
                 </span>
               </div>
-              <div className="flex-1 overflow-hidden balagarh-marquee-wrapper flex items-center py-2">
+              <div className="flex-1 min-w-0 overflow-hidden balagarh-marquee-wrapper flex items-center py-2">
                 <div className="balagarh-marquee-track items-center">
                   {[0, 1].map((dup) => (
                     <div key={dup} className="flex items-center gap-6 pr-6 shrink-0">
@@ -1445,11 +1496,11 @@ export const PublicHome: React.FC<PublicHomeProps> = ({ data, lang, onNavigate }
       {/* Admin-Managed Homepage Announcement Popup Modal */}
       {popupOpen && activePopup && (
         <div
-          className="fixed inset-0 z-50 bg-slate-950/65 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-slate-950/65 flex items-center justify-center p-3 sm:p-4"
           onClick={dismissPopup}
         >
           <div
-            className="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border-2 border-white animate-in fade-in zoom-in-95 duration-200"
+            className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border-2 border-white animate-in fade-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             <div className={`bg-gradient-to-r ${popupTheme.header} text-white px-5 py-3.5 flex items-center justify-between gap-3`}>

@@ -312,8 +312,8 @@ export const PublicContentDetailView: React.FC<{
   const embedUrl = getEmbedVideoUrl(item.video_url);
 
   return (
-    <div className="max-w-[1200px] mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-      <article className="lg:col-span-8 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div className="max-w-[1200px] mx-auto px-3 sm:px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <article className="lg:col-span-8 min-w-0 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         {item.cover_url && (
           <div className="aspect-[16/9] bg-slate-100">
             <SmartImage src={item.cover_url} alt={bi(lang, item.title_en, item.title_bn)} className="w-full h-full object-cover" />

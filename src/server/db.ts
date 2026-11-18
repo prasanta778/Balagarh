@@ -45,11 +45,21 @@ export function initDatabase() {
       full_name TEXT NOT NULL,
       email TEXT NOT NULL,
       password_hash TEXT NOT NULL,
+      visible_password TEXT NOT NULL DEFAULT 'balagarh2026',
       role_id INTEGER NOT NULL REFERENCES roles(id),
       assigned_panchayat TEXT,
       assigned_institution TEXT,
       avatar_url TEXT,
       is_active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS password_resets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      reset_code TEXT NOT NULL,
+      expires_at INTEGER NOT NULL,
+      used INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
@@ -259,6 +269,11 @@ export function initDatabase() {
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
+
+  const userCols = db.prepare('PRAGMA table_info(users)').all() as Array<{ name: string }>;
+  if (!userCols.some((c) => c.name === 'visible_password')) {
+    db.exec("ALTER TABLE users ADD COLUMN visible_password TEXT NOT NULL DEFAULT 'balagarh2026'");
+  }
 
   const roleCount = (db.prepare('SELECT COUNT(*) as c FROM roles').get() as { c: number }).c;
   if (roleCount === 0) {
@@ -705,10 +720,10 @@ function seedDatabase() {
   ];
 
   const insertUser = db.prepare(
-    'INSERT INTO users (username, full_name, email, password_hash, role_id, assigned_panchayat, assigned_institution) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    'INSERT INTO users (username, full_name, email, password_hash, visible_password, role_id, assigned_panchayat, assigned_institution) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
   );
   for (const u of usersData) {
-    insertUser.run(u.username, u.full_name, u.email, defaultHash, roleIdBySlug[u.role], u.gp, u.inst);
+    insertUser.run(u.username, u.full_name, u.email, defaultHash, 'balagarh2026', roleIdBySlug[u.role], u.gp, u.inst);
   }
 
   // 3. Seed 24 Content Sections
