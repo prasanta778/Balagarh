@@ -33,15 +33,16 @@ const ROLE_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
 
 export const AdminLogin: React.FC<{
   lang: Language;
+  sessionNotice?: string;
   onLoginSuccess: (user: UserRecord) => void;
   onBackToSite: () => void;
-}> = ({ lang, onLoginSuccess, onBackToSite }) => {
+}> = ({ lang, sessionNotice = '', onLoginSuccess, onBackToSite }) => {
   const [demoUsers, setDemoUsers] = useState<DemoUserSummary[]>([]);
   const [username, setUsername] = useState('superadmin');
   const [password, setPassword] = useState('balagarh2026');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(sessionNotice);
   const [notice, setNotice] = useState('');
 
   // Forgot Password State

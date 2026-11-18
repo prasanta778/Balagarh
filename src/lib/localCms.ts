@@ -111,6 +111,36 @@ function loadStore(): LocalCmsStore {
     if (raw) {
       const parsed = JSON.parse(raw) as LocalCmsStore;
       if (parsed && Array.isArray(parsed.sections) && Array.isArray(parsed.users)) {
+        let repaired = false;
+        if (!Array.isArray(parsed.media) || (parsed.media.length === 0 && SNAPSHOT.media?.length)) {
+          parsed.media = structuredClone(SNAPSHOT.media || []);
+          repaired = true;
+        }
+        if (!Array.isArray(parsed.contents) || (parsed.contents.length === 0 && SNAPSHOT.contents?.length)) {
+          parsed.contents = structuredClone(SNAPSHOT.contents || []);
+          repaired = true;
+        }
+        if (!Array.isArray(parsed.events) || (parsed.events.length === 0 && SNAPSHOT.events?.length)) {
+          parsed.events = structuredClone(SNAPSHOT.events || []);
+          repaired = true;
+        }
+        if (!Array.isArray(parsed.banners) || (parsed.banners.length === 0 && (SNAPSHOT.banners?.length || SNAPSHOT.bootstrap?.banners?.length))) {
+          parsed.banners = structuredClone(SNAPSHOT.banners || SNAPSHOT.bootstrap?.banners || []);
+          repaired = true;
+        }
+        if (!Array.isArray(parsed.homepageSections) || parsed.homepageSections.length === 0) {
+          parsed.homepageSections = structuredClone(SNAPSHOT.bootstrap?.homepageSections || []);
+          repaired = true;
+        }
+        if (!Array.isArray(parsed.quickCards) || parsed.quickCards.length === 0) {
+          parsed.quickCards = structuredClone(SNAPSHOT.quickCards || SNAPSHOT.bootstrap?.quickCards || []);
+          repaired = true;
+        }
+        if (!Array.isArray(parsed.popups) || parsed.popups.length === 0) {
+          parsed.popups = structuredClone(SNAPSHOT.popups || (SNAPSHOT.bootstrap?.popup ? [SNAPSHOT.bootstrap.popup] : []));
+          repaired = true;
+        }
+        if (repaired) saveStore(parsed);
         return parsed;
       }
     }
@@ -189,11 +219,33 @@ function toSafeUser(u: LocalUser, roles: RoleRecord[]): UserRecord {
     : rest;
 }
 
+function extractTokenUid(token: string): number | null {
+  if (!token) return null;
+  if (token.startsWith('local:')) {
+    const uid = Number(token.slice(6));
+    return Number.isFinite(uid) && uid > 0 ? uid : null;
+  }
+  // Support fallback when a server HMAC token (base64urlPayload.sig) is carried into localCms mode
+  const dotIdx = token.indexOf('.');
+  if (dotIdx > 0) {
+    try {
+      const b64 = token.slice(0, dotIdx).replace(/-/g, '+').replace(/_/g, '/');
+      const padded = b64 + '='.repeat((4 - (b64.length % 4)) % 4);
+      const parsed = JSON.parse(atob(padded)) as { uid?: unknown };
+      const uid = Number(parsed?.uid);
+      return Number.isFinite(uid) && uid > 0 ? uid : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 function getAuthedUser(store: LocalCmsStore, headers: Headers): UserRecord | null {
   const auth = headers.get('Authorization') || '';
-  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-  if (!token.startsWith('local:')) return null;
-  const uid = Number(token.slice(6));
+  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  const uid = extractTokenUid(token);
+  if (!uid) return null;
   const u = store.users.find((x) => x.id === uid && x.is_active === 1);
   if (!u) return null;
   return toSafeUser(u, store.roles);
@@ -251,18 +303,30 @@ export function buildLocalPublicBootstrap(): PublicBootstrapData {
 
   const homepageSections = [...store.homepageSections].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id);
 
+  const sortPublicContents = (a: ContentItem, b: ContentItem) =>
+    Number(b.is_featured || 0) - Number(a.is_featured || 0) ||
+    Number(a.sort_order || 0) - Number(b.sort_order || 0) ||
+    Number(b.id) - Number(a.id);
+
   const latestNews = publishedContents
     .filter((c) => c.section_slug === 'news-announcements')
+    .sort(sortPublicContents)
     .slice(0, 6);
   const notices = publishedContents
     .filter((c) => c.section_slug === 'notices-circulars')
+    .sort(sortPublicContents)
     .slice(0, 6);
   const upcomingEvents = publishedEvents
     .filter((e) => e.event_status === 'Upcoming' || e.event_status === 'Ongoing')
+    .sort(
+      (a, b) =>
+        Number(b.is_featured || 0) - Number(a.is_featured || 0) ||
+        String(a.start_datetime || '').localeCompare(String(b.start_datetime || ''))
+    )
     .slice(0, 4);
-  const aboutSummary = publishedContents.find((c) => c.section_slug === 'about-balagarh') || null;
-  const photoGallery = publishedContents.filter((c) => c.section_slug === 'photo-gallery').slice(0, 2);
-  const videoGallery = publishedContents.filter((c) => c.section_slug === 'video-gallery').slice(0, 2);
+  const aboutSummary = publishedContents.filter((c) => c.section_slug === 'about-balagarh').sort(sortPublicContents)[0] || null;
+  const photoGallery = publishedContents.filter((c) => c.section_slug === 'photo-gallery').sort(sortPublicContents).slice(0, 2);
+  const videoGallery = publishedContents.filter((c) => c.section_slug === 'video-gallery').sort(sortPublicContents).slice(0, 2);
 
   const activePopupRow = store.popups.find((p) => p.is_active === 1) || null;
   const popup = activePopupRow
@@ -283,8 +347,9 @@ export function buildLocalPublicBootstrap(): PublicBootstrapData {
     aboutSummary,
     photoGallery,
     videoGallery,
+    recentMedia: store.media.slice(0, 12),
     popup,
-  };
+  } as PublicBootstrapData;
 }
 
 function makeError(message: string, status = 400, extra?: Record<string, unknown>): Error {
@@ -832,6 +897,13 @@ export async function localCmsFetch<T>(url: string, options: RequestInit = {}): 
         })
       : existing.gallery;
 
+    const nextCoverId =
+      body.cover_media_id !== undefined
+        ? body.cover_media_id
+          ? Number(body.cover_media_id)
+          : null
+        : existing.cover_media_id;
+
     const updated: ContentItem = {
       ...existing,
       section_slug: sectionSlug,
@@ -842,7 +914,8 @@ export async function localCmsFetch<T>(url: string, options: RequestInit = {}): 
       summary_bn: String(body.summary_bn ?? existing.summary_bn),
       body_en: String(body.body_en ?? existing.body_en),
       body_bn: String(body.body_bn ?? existing.body_bn),
-      cover_media_id: body.cover_media_id !== undefined ? (body.cover_media_id ? Number(body.cover_media_id) : null) : existing.cover_media_id,
+      cover_media_id: nextCoverId,
+      cover_url: nextCoverId ? mediaUrlById(store, nextCoverId) : null,
       video_url: body.video_url !== undefined ? (body.video_url ? String(body.video_url) : null) : existing.video_url,
       document_url: body.document_url !== undefined ? (body.document_url ? String(body.document_url) : null) : existing.document_url,
       external_url: body.external_url !== undefined ? (body.external_url ? String(body.external_url) : null) : existing.external_url,
@@ -935,6 +1008,12 @@ export async function localCmsFetch<T>(url: string, options: RequestInit = {}): 
     const idx = store.events.findIndex((e) => e.id === id);
     if (idx === -1) throw makeError('Event not found', 404);
     const ex = store.events[idx];
+    const nextEventCoverId =
+      body.cover_media_id !== undefined
+        ? body.cover_media_id
+          ? Number(body.cover_media_id)
+          : null
+        : ex.cover_media_id;
     const updated: EventItem = {
       ...ex,
       title_en: String(body.title_en ?? ex.title_en),
@@ -947,7 +1026,8 @@ export async function localCmsFetch<T>(url: string, options: RequestInit = {}): 
       end_datetime: String(body.end_datetime ?? ex.end_datetime),
       venue: String(body.venue ?? ex.venue),
       organizer: String(body.organizer ?? ex.organizer),
-      cover_media_id: body.cover_media_id !== undefined ? (body.cover_media_id ? Number(body.cover_media_id) : null) : ex.cover_media_id,
+      cover_media_id: nextEventCoverId,
+      cover_url: nextEventCoverId ? mediaUrlById(store, nextEventCoverId) : null,
       video_url: body.video_url !== undefined ? (body.video_url ? String(body.video_url) : null) : ex.video_url,
       registration_url: body.registration_url !== undefined ? (body.registration_url ? String(body.registration_url) : null) : ex.registration_url,
       contact_details: body.contact_details !== undefined ? (body.contact_details ? String(body.contact_details) : null) : ex.contact_details,

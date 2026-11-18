@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { Language, UserRecord } from './types/cms';
-import { apiFetch, clearSessionTokens, getAuthToken } from './lib/api';
+import { apiFetch, clearSessionTokens, getAuthToken, initBackendMode, onAuthExpired } from './lib/api';
 import { getBundledBootstrap, getFallbackBootstrap } from './lib/staticFallback';
 import { PublicHome, PublicLayout, type PublicBootstrapData } from './components/public/PublicPortal';
 import {
@@ -19,6 +19,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [bootstrap, setBootstrap] = useState<PublicBootstrapData>(() => getBundledBootstrap());
   const [adminUser, setAdminUser] = useState<UserRecord | null>(null);
+  const [sessionNotice, setSessionNotice] = useState<string>('');
   const [checkingAuth, setCheckingAuth] = useState<boolean>(true);
 
   const navigate = (to: string) => {
@@ -33,6 +34,13 @@ export default function App() {
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
+  useEffect(() => {
+    return onAuthExpired(() => {
+      setAdminUser(null);
+      setSessionNotice('Your session expired or requires sign-in. Please log in to continue.');
+    });
+  }, []);
+
   const loadBootstrap = () => {
     apiFetch<PublicBootstrapData>('/api/public/bootstrap')
       .then((res) => setBootstrap(res))
@@ -43,22 +51,34 @@ export default function App() {
   };
 
   useEffect(() => {
-    loadBootstrap();
-    const token = getAuthToken();
-    if (token) {
-      apiFetch<{ user: UserRecord }>('/api/auth/me')
-        .then((res) => setAdminUser(res.user))
-        .catch(() => clearSessionTokens())
-        .finally(() => setCheckingAuth(false));
-    } else {
-      setCheckingAuth(false);
-    }
+    let active = true;
+    initBackendMode()
+      .then(() => {
+        if (!active) return;
+        loadBootstrap();
+        const token = getAuthToken();
+        if (token) {
+          return apiFetch<{ user: UserRecord }>('/api/auth/me')
+            .then((res) => {
+              if (active) setAdminUser(res.user);
+            })
+            .catch(() => {
+              clearSessionTokens();
+            });
+        }
+      })
+      .finally(() => {
+        if (active) setCheckingAuth(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   // Re-fetch public bootstrap whenever returning from Admin to Public Homepage
   useEffect(() => {
     if (!route.startsWith('/admin')) {
-      loadBootstrap();
+      initBackendMode().then(() => loadBootstrap());
     }
   }, [route]);
 
@@ -81,7 +101,11 @@ export default function App() {
       return (
         <AdminLogin
           lang={lang}
-          onLoginSuccess={(u) => setAdminUser(u)}
+          sessionNotice={sessionNotice}
+          onLoginSuccess={(u) => {
+            setSessionNotice('');
+            setAdminUser(u);
+          }}
           onBackToSite={() => navigate('/')}
         />
       );
@@ -95,6 +119,7 @@ export default function App() {
         onViewPublicSite={() => navigate('/')}
         onLogout={() => {
           clearSessionTokens();
+          setSessionNotice('');
           setAdminUser(null);
           navigate('/admin');
         }}

@@ -11,8 +11,22 @@ promoteScheduledContent();
 
 export const app = express();
 const TOKEN_SECRET = process.env.CMS_TOKEN_SECRET || 'our-balagarh-cms-hmac-secret-2026';
+const isServerlessRuntime = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 
 app.use(express.json({ limit: '4mb' }));
+
+app.use((_req, res, next) => {
+  res.setHeader('X-CMS-Persistence', isServerlessRuntime ? 'ephemeral' : 'persistent');
+  next();
+});
+
+app.get('/api/health', (_req, res) => {
+  res.json({
+    ok: true,
+    persistent: !isServerlessRuntime,
+    mode: isServerlessRuntime ? 'ephemeral' : 'node-sqlite',
+  });
+});
 
 // Static serve uploaded media safely outside source tree
 const uploadsRoot = uploadsDir;

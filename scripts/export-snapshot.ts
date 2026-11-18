@@ -137,7 +137,7 @@ async function main() {
 
   const users = db.prepare(`
     SELECT u.id, u.username, u.full_name, u.email, u.role_id, u.assigned_panchayat, u.assigned_institution,
-           u.avatar_url, u.is_active, u.created_at,
+           u.avatar_url, u.phone, u.designation, u.bio, u.address, u.is_active, u.created_at,
            r.slug as role_slug, r.name_en as role_name_en, r.name_bn as role_name_bn, r.accent_color,
            r.description as role_description, r.permissions_json
     FROM users u JOIN roles r ON r.id = u.role_id

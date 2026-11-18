@@ -53,6 +53,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [confirmPass, setConfirmPass] = useState('');
   const [passMsg, setPassMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const [passSaving, setPassSaving] = useState(false);
+  const [dashError, setDashError] = useState<string>('');
   const [demoUsers, setDemoUsers] = useState<Array<{ username: string; full_name: string; role_name_en: string; accent_color: string }>>([]);
 
   const isSuperAdmin = user.role_slug === 'super_admin';
@@ -60,13 +61,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     user.permissions.modules.includes('*') || user.permissions.modules.includes(mod);
 
   const loadDashboardData = () => {
+    setDashError('');
     apiFetch<{ sections: ContentSection[] }>('/api/admin/sections')
       .then((res) => setSections(res.sections))
-      .catch(() => {});
+      .catch((err) => setDashError(err instanceof Error ? err.message : 'Unable to load CMS sections'));
 
     apiFetch<DashboardStats>('/api/admin/dashboard')
       .then((res) => setStats(res))
-      .catch(() => {});
+      .catch((err) => setDashError(err instanceof Error ? err.message : 'Unable to load CMS dashboard stats'));
   };
 
   useEffect(() => {
@@ -535,6 +537,18 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
         {/* Main Content Viewport */}
         <main className="p-4 sm:p-6 flex-1 space-y-6 max-w-[1440px] w-full mx-auto">
+          {dashError && (
+            <div className="bg-red-50 border border-red-200 text-red-800 rounded-xl px-4 py-3 text-xs sm:text-sm font-medium flex items-center justify-between gap-3">
+              <span>{dashError}</span>
+              <button
+                type="button"
+                onClick={loadDashboardData}
+                className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold shrink-0"
+              >
+                Retry
+              </button>
+            </div>
+          )}
           {tab.type === 'dashboard' && (
             <>
               {/* Welcome Banner */}
