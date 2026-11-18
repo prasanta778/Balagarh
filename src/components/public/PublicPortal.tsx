@@ -1,9 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Calendar, CalendarDays, MapPin, Phone, Mail, Search, ChevronLeft, ChevronRight,
+  Calendar, MapPin, Phone, Mail, Search, ChevronLeft, ChevronRight,
   ChevronDown, ArrowRight, Play, Pause, Eye, Landmark, ExternalLink, Menu, X,
   Globe, Compass, Plus, Minus, Sparkles, Radio, Video, BellRing, Clock,
-  Megaphone, Newspaper, Building2, GraduationCap, HeartPulse, Image as ImageIcon,
 } from 'lucide-react';
 import type {
   ContentItem, ContentSection, EventItem, HomepageBanner,
@@ -248,33 +247,14 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
         </div>
       </div>
 
-      {/* Architectural Civic Brand & Colorful Action Header */}
-      <header className="relative bg-gradient-to-r from-[#FFFFFF] via-[#F4F9FF] to-[#ECF4FF] border-b border-sky-200/80 overflow-hidden">
-        {/* Matching 7-Color Civic Spectrum Ribbon */}
-        <div className="h-1 w-full grid grid-cols-7 relative z-10">
-          <div className="bg-emerald-500" />
-          <div className="bg-sky-500" />
-          <div className="bg-violet-500" />
-          <div className="bg-rose-500" />
-          <div className="bg-amber-400" />
-          <div className="bg-teal-500" />
-          <div className="bg-orange-500" />
-        </div>
-
-        {/* Soft Ambient Civic Color Glows & Hooghly River Wave Backdrop */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-20 -left-16 w-72 h-72 rounded-full bg-sky-300/20 blur-3xl"
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -bottom-24 right-8 w-80 h-80 rounded-full bg-emerald-300/15 blur-3xl"
-        />
+      {/* Architectural Civic Brand & Search Header */}
+      <header className="relative bg-gradient-to-r from-[#FFFFFF] via-[#F6FAFF] to-[#EDF4FF] border-b border-slate-200/90 overflow-hidden">
+        {/* Subtle Hooghly River Wave & Heritage Arch Accent */}
         <svg
           aria-hidden="true"
           viewBox="0 0 1440 160"
           preserveAspectRatio="none"
-          className="pointer-events-none absolute inset-0 w-full h-full opacity-[0.07] text-[#1D4ED8]"
+          className="pointer-events-none absolute inset-0 w-full h-full opacity-[0.07] text-[#0A2F66]"
         >
           <path
             fill="currentColor"
@@ -287,173 +267,83 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
           />
         </svg>
 
-        <div className="relative max-w-[1280px] mx-auto px-3 sm:px-4 py-3.5 sm:py-4">
-          {/* Row 1: Brand Crest, Wordmark, Search & Primary Civic Highlights */}
-          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3.5 lg:gap-5">
-            {/* Left Zone: Multi-Color Ringed Crest & Wordmark */}
-            <div className="flex items-center justify-between gap-3 w-full lg:w-auto min-w-0">
-              <button
-                type="button"
-                onClick={() => onNavigate('/')}
-                className="flex items-center gap-3.5 text-left group min-w-0"
-              >
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-emerald-500 via-blue-600 to-amber-500 p-[3px] shadow-md shadow-blue-500/20 shrink-0 group-hover:scale-[1.03] transition-transform">
-                  <div className="w-full h-full rounded-[13px] bg-white p-0.5 overflow-hidden">
-                    <img
-                      src="/uploads/guptipara_terracotta_temple.jpg"
-                      alt="Our Balagarh Crest"
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover rounded-[10px]"
-                    />
-                  </div>
+        <div className="relative max-w-[1280px] mx-auto px-3 sm:px-4 py-3.5 sm:py-4 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3.5 lg:gap-6">
+          {/* Left Zone: Civic Crest & Wordmark */}
+          <div className="flex items-center justify-between gap-3 w-full lg:w-auto min-w-0">
+            <button
+              type="button"
+              onClick={() => onNavigate('/')}
+              className="flex items-center gap-3.5 text-left group min-w-0"
+            >
+              <div className="w-13 h-13 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-[#0A2F66] via-[#1D4ED8] to-[#0D9488] p-[2.5px] shadow-md shrink-0 group-hover:scale-[1.02] transition-transform">
+                <div className="w-full h-full rounded-[13px] bg-white p-0.5 overflow-hidden">
+                  <img
+                    src="/uploads/guptipara_terracotta_temple.jpg"
+                    alt="Our Balagarh Crest"
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover rounded-[10px]"
+                  />
                 </div>
-                <div className="min-w-0">
-                  <div className="flex items-baseline gap-2.5 flex-wrap">
-                    <span className="font-display text-2xl sm:text-[32px] font-extrabold tracking-tight leading-none bg-gradient-to-r from-[#0A2F66] via-[#1D4ED8] to-[#0D9488] bg-clip-text text-transparent">
-                      {lang === 'bn' ? 'আমাদের বলাগড়' : 'Our Balagarh'}
-                    </span>
-                    <span className="hidden sm:inline text-xs font-bold text-[#0F766E] tracking-wide">
-                      {lang === 'bn' ? 'হুগলি · পশ্চিমবঙ্গ' : 'Hooghly · West Bengal'}
-                    </span>
-                  </div>
-                  <div className="text-xs sm:text-sm font-semibold text-slate-600 mt-1 line-clamp-1">
-                    {lang === 'bn'
-                      ? 'বলাগড় ব্লকের সরকারি, শিক্ষা, স্বাস্থ্য ও নাগরিক তথ্যের পোর্টাল'
-                      : 'Official Civic, Heritage & Public Information Portal of Balagarh Block'}
-                  </div>
-                  <div className="hidden sm:flex items-center gap-2 mt-1 text-[11px] font-semibold text-slate-500">
-                    <span className="text-blue-700">{lang === 'bn' ? '১৩টি গ্রাম পঞ্চায়েত' : '13 Gram Panchayats'}</span>
-                    <span aria-hidden="true">·</span>
-                    <span className="text-emerald-700">{lang === 'bn' ? 'গুপ্তিপাড়া ও জিরাট ঐতিহ্য' : 'Guptipara & Jirat Heritage'}</span>
-                    <span aria-hidden="true">·</span>
-                    <span className="text-rose-700">{lang === 'bn' ? 'জনসেবা ও তথ্য' : 'Public Services'}</span>
-                  </div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setMobileMenuOpen((o) => !o)}
-                className="lg:hidden p-2.5 rounded-xl border border-sky-200 bg-white text-[#0A2B5C] hover:bg-sky-50 shadow-xs shrink-0"
-                aria-label="Toggle Menu"
-                aria-expanded={mobileMenuOpen}
-              >
-                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              </button>
-            </div>
-
-            {/* Right Zone: Vibrant Search + Matching Colorful Action Buttons */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2.5 w-full lg:w-auto shrink-0">
-              <form
-                onSubmit={onSearchSubmit}
-                className="flex items-center border-2 border-sky-200/90 rounded-xl overflow-hidden bg-white focus-within:ring-4 focus-within:ring-blue-500/15 focus-within:border-blue-600 w-full sm:w-72 lg:w-[300px] shadow-sm min-w-0 transition-all"
-              >
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={lang === 'bn' ? 'স্কুল, পঞ্চায়েত, খবর খুঁজুন...' : 'Search schools, panchayats, notices...'}
-                  className="w-full min-w-0 px-3 py-2 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none"
-                />
-                <button
-                  type="submit"
-                  className="px-3.5 py-2.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 text-white hover:brightness-110 transition-all shrink-0 inline-flex items-center gap-1.5 text-xs font-extrabold cursor-pointer"
-                  aria-label="Search"
-                >
-                  <Search className="w-4 h-4" />
-                  <span className="hidden sm:inline">{lang === 'bn' ? 'খুঁজুন' : 'Search'}</span>
-                </button>
-              </form>
-
-              <div className="grid grid-cols-2 sm:flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => onNavigate('/section/public-services')}
-                  className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:brightness-110 hover:-translate-y-0.5 text-white text-xs font-extrabold shadow-sm shadow-emerald-600/25 transition-all whitespace-nowrap shrink-0 cursor-pointer"
-                >
-                  <Landmark className="w-4 h-4 text-amber-200 shrink-0" />
-                  <span>{lang === 'bn' ? 'নাগরিক পরিষেবা' : 'Citizen Services'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onNavigate('/section/photo-gallery')}
-                  className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-orange-600 hover:brightness-110 hover:-translate-y-0.5 text-white text-xs font-extrabold shadow-sm shadow-rose-600/25 transition-all whitespace-nowrap shrink-0 cursor-pointer"
-                >
-                  <ImageIcon className="w-4 h-4 text-amber-100 shrink-0" />
-                  <span>{lang === 'bn' ? 'গ্যালারি' : 'Gallery'}</span>
-                </button>
               </div>
-            </div>
+              <div className="min-w-0">
+                <div className="flex items-baseline gap-2.5 flex-wrap">
+                  <span className="font-display text-2xl sm:text-[32px] font-extrabold tracking-tight leading-none text-[#0A2B5C]">
+                    {lang === 'bn' ? 'আমাদের বলাগড়' : 'Our Balagarh'}
+                  </span>
+                  <span className="hidden sm:inline text-xs font-semibold text-[#0F766E] tracking-wide">
+                    {lang === 'bn' ? 'হুগলি · পশ্চিমবঙ্গ' : 'Hooghly · West Bengal'}
+                  </span>
+                </div>
+                <div className="text-xs sm:text-sm font-medium text-slate-600 mt-1.5 line-clamp-1">
+                  {lang === 'bn'
+                    ? 'বলাগড় ব্লকের সরকারি, শিক্ষা, স্বাস্থ্য ও নাগরিক তথ্যের পোর্টাল'
+                    : 'Official Civic, Heritage & Public Information Portal of Balagarh Block'}
+                </div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen((o) => !o)}
+              className="lg:hidden p-2.5 rounded-xl border border-slate-200 bg-white text-[#0A2B5C] hover:bg-slate-50 shadow-xs shrink-0"
+              aria-label="Toggle Menu"
+              aria-expanded={mobileMenuOpen}
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
           </div>
 
-          {/* Row 2: Colorful Quick-Access Civic Button Bar */}
-          <div className="mt-3 pt-2.5 border-t border-sky-200/75 grid grid-cols-2 sm:flex sm:flex-wrap lg:justify-between items-center gap-2">
-            {[
-              {
-                label: lang === 'bn' ? 'বিজ্ঞপ্তি ও নির্দেশ' : 'Notices',
-                route: '/section/notices-circulars',
-                gradient: 'from-amber-600 to-orange-600 shadow-orange-600/20',
-                Icon: Megaphone,
-              },
-              {
-                label: lang === 'bn' ? 'তাৎক্ষণিক সংবাদ' : 'Latest News',
-                route: '/section/news-announcements',
-                gradient: 'from-sky-600 to-blue-600 shadow-sky-600/20',
-                Icon: Newspaper,
-              },
-              {
-                label: lang === 'bn' ? 'গ্রাম পঞ্চায়েত' : 'Panchayats',
-                route: '/section/gram-panchayats',
-                gradient: 'from-emerald-600 to-green-600 shadow-emerald-600/20',
-                Icon: Building2,
-              },
-              {
-                label: lang === 'bn' ? 'স্কুল ও কলেজ' : 'Education',
-                route: '/section/schools',
-                gradient: 'from-indigo-600 to-violet-600 shadow-indigo-600/20',
-                Icon: GraduationCap,
-              },
-              {
-                label: lang === 'bn' ? 'স্বাস্থ্য পরিষেবা' : 'Healthcare',
-                route: '/section/hospitals',
-                gradient: 'from-rose-600 to-pink-600 shadow-rose-600/20',
-                Icon: HeartPulse,
-              },
-              {
-                label: lang === 'bn' ? 'পর্যটন ও ঐতিহ্য' : 'Tourism',
-                route: '/section/tourism',
-                gradient: 'from-teal-600 to-cyan-600 shadow-teal-600/20',
-                Icon: Compass,
-              },
-              {
-                label: lang === 'bn' ? 'ইভেন্ট ও লাইভ' : 'Live & Events',
-                route: '/events',
-                gradient: 'from-fuchsia-600 to-rose-600 shadow-fuchsia-600/20',
-                Icon: CalendarDays,
-              },
-              {
-                label: lang === 'bn' ? 'জরুরি হেল্পলাইন' : 'Helplines',
-                route: '/section/contact-information',
-                gradient: 'from-blue-600 to-indigo-700 shadow-blue-600/20',
-                Icon: Phone,
-              },
-            ].map((action) => {
-              const isSelected = currentRoute === action.route;
-              const ActionIcon = action.Icon;
-              return (
-                <button
-                  key={action.route}
-                  type="button"
-                  onClick={() => onNavigate(action.route)}
-                  className={`inline-flex items-center justify-center sm:justify-start gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r ${action.gradient} text-white text-xs font-bold shadow-sm hover:brightness-110 hover:-translate-y-0.5 transition-all whitespace-nowrap shrink-0 cursor-pointer ${
-                    isSelected ? 'ring-2 ring-offset-1 ring-[#0A2F66]' : ''
-                  }`}
-                >
-                  <ActionIcon className="w-3.5 h-3.5 shrink-0" />
-                  <span>{action.label}</span>
-                </button>
-              );
-            })}
+          {/* Right Zone: Spacious Search + Primary Civic Notices Action */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2.5 w-full lg:w-auto shrink-0">
+            <form
+              onSubmit={onSearchSubmit}
+              className="flex items-center border border-slate-300/90 rounded-xl overflow-hidden bg-white focus-within:ring-2 focus-within:ring-blue-600 focus-within:border-blue-600 w-full sm:w-80 lg:w-[340px] shadow-sm min-w-0 transition-shadow"
+            >
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={lang === 'bn' ? 'স্কুল, পঞ্চায়েত, হাসপাতাল বা খবর খুঁজুন...' : 'Search schools, panchayats, notices...'}
+                className="w-full min-w-0 px-3.5 py-2.5 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none"
+              />
+              <button
+                type="submit"
+                className="px-4 py-2.5 bg-gradient-to-r from-[#0A2F66] to-[#1D4ED8] text-white hover:brightness-110 transition-all shrink-0 inline-flex items-center gap-1.5 text-xs font-bold"
+                aria-label="Search"
+              >
+                <Search className="w-4 h-4" />
+                <span className="hidden sm:inline">{lang === 'bn' ? 'খুঁজুন' : 'Search'}</span>
+              </button>
+            </form>
+
+            <button
+              type="button"
+              onClick={() => onNavigate('/section/public-services')}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#0F766E] hover:bg-[#0D625B] text-white text-xs sm:text-[13px] font-bold shadow-sm transition-colors whitespace-nowrap shrink-0"
+            >
+              <Landmark className="w-4 h-4 text-amber-300 shrink-0" />
+              <span>{lang === 'bn' ? 'নাগরিক পরিষেবা' : 'Citizen Services'}</span>
+            </button>
           </div>
         </div>
       </header>
