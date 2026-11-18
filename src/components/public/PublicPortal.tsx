@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Calendar, MapPin, Phone, Mail, Search, ChevronLeft, ChevronRight,
-  ChevronDown, ArrowRight, Play, Pause, Eye, ShieldCheck, ExternalLink, Menu, X,
-  Globe, Compass, Plus, Minus, Sparkles, Radio, Video, BellRing,
+  ChevronDown, ArrowRight, Play, Pause, Eye, Landmark, ExternalLink, Menu, X,
+  Globe, Compass, Plus, Minus, Sparkles, Radio, Video, BellRing, Clock,
 } from 'lucide-react';
 import type {
   ContentItem, ContentSection, EventItem, HomepageBanner,
@@ -154,40 +154,47 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [expandedMobileGroup, setExpandedMobileGroup] = useState<string | null>('About Balagarh');
 
+  const todayLabel = new Intl.DateTimeFormat(lang === 'bn' ? 'bn-BD' : 'en-IN', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date());
+
   return (
     <div className="min-h-screen flex flex-col bg-[#eef4fb] text-slate-900 overflow-x-clip" style={{ fontSize: `${fontScale}%` }}>
-      {/* Top Crisp Light Utility Strip */}
-      <div className="bg-slate-50 text-slate-700 text-[11px] sm:text-xs border-b border-slate-200">
+      {/* Top Civic Utility Strip */}
+      <div className="bg-[#071D3B] text-slate-200 text-[11px] sm:text-xs border-b border-amber-400/25">
         <div className="max-w-[1280px] mx-auto px-3 sm:px-4 py-1.5 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2 sm:gap-4 min-w-0">
-            <span className="inline-flex items-center gap-1.5 font-medium truncate">
-              <MapPin className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3.5 min-w-0">
+            <span className="inline-flex items-center gap-1.5 font-medium text-slate-100 truncate">
+              <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <span className="truncate">{lang === 'bn' ? 'বলাগড় ব্লক, হুগলি, পশ্চিমবঙ্গ – ৭১২৫০১' : 'Balagarh Block, Hooghly, WB – 712501'}</span>
             </span>
-            <span className="hidden sm:inline-flex items-center gap-1.5 tabular-nums font-medium">
-              <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span className="hidden sm:inline text-slate-500" aria-hidden="true">·</span>
+            <span className="hidden sm:inline-flex items-center gap-1.5 tabular-nums text-slate-200">
+              <Phone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               <span>+91 33-2636-XXXX</span>
             </span>
-            <span className="hidden md:inline-flex items-center gap-1.5 font-medium">
-              <Mail className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <span className="hidden md:inline text-slate-500" aria-hidden="true">·</span>
+            <span className="hidden md:inline-flex items-center gap-1.5 text-slate-200">
+              <Mail className="w-3.5 h-3.5 text-sky-300 shrink-0" />
               <span>info@ourbalagarh.in</span>
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Social Icons */}
-            <div className="hidden sm:flex items-center gap-1.5 pr-2 border-r border-slate-300">
-              <a href="#fb" onClick={(e) => { e.preventDefault(); onNavigate('/section/news-announcements'); }} className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-extrabold flex items-center justify-center">f</a>
-              <a href="#yt" onClick={(e) => { e.preventDefault(); onNavigate('/section/video-gallery'); }} className="w-5 h-5 rounded-full bg-red-600 text-white text-[10px] font-extrabold flex items-center justify-center">▶</a>
-              <a href="#ig" onClick={(e) => { e.preventDefault(); onNavigate('/section/photo-gallery'); }} className="w-5 h-5 rounded-full bg-gradient-to-tr from-amber-500 via-pink-600 to-purple-600 text-white text-[10px] font-extrabold flex items-center justify-center">◎</a>
-            </div>
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <span className="hidden lg:inline-flex items-center gap-1.5 text-slate-300 tabular-nums pr-2.5 border-r border-white/15">
+              <Clock className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+              <span>{todayLabel}</span>
+            </span>
 
-            {/* Font Size Switcher */}
-            <div className="flex items-center gap-1 pr-2 border-r border-slate-300 font-semibold">
+            {/* Accessibility Font Scaler */}
+            <div className="flex items-center gap-0.5 pr-2 border-r border-white/15 font-semibold">
               <button
                 type="button"
                 onClick={() => setFontScale((s) => Math.max(90, s - 5))}
-                className="px-1.5 py-0.5 rounded hover:bg-slate-200 transition-colors"
+                className="px-1.5 py-0.5 rounded hover:bg-white/15 text-slate-200 transition-colors"
                 title="Decrease font size"
               >
                 A-
@@ -195,7 +202,7 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
               <button
                 type="button"
                 onClick={() => setFontScale(100)}
-                className="px-1.5 py-0.5 rounded hover:bg-slate-200 transition-colors font-bold text-blue-700"
+                className="px-1.5 py-0.5 rounded hover:bg-white/15 font-bold text-amber-300 transition-colors"
                 title="Reset font size"
               >
                 A
@@ -203,93 +210,23 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
               <button
                 type="button"
                 onClick={() => setFontScale((s) => Math.min(115, s + 5))}
-                className="px-1.5 py-0.5 rounded hover:bg-slate-200 transition-colors"
+                className="px-1.5 py-0.5 rounded hover:bg-white/15 text-slate-200 transition-colors"
                 title="Increase font size"
               >
                 A+
               </button>
             </div>
 
-            <button
-              type="button"
-              onClick={onOpenAdmin}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-gradient-to-r from-amber-400 to-orange-400 text-slate-950 font-bold hover:brightness-95 transition-all shadow-xs whitespace-nowrap shrink-0"
-            >
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>{lang === 'bn' ? 'অ্যাডমিন প্যানেল' : 'Admin CMS'}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Colorful Brand & Search Header */}
-      <header className="bg-white">
-        <div className="max-w-[1280px] mx-auto px-3 sm:px-4 py-3 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 lg:gap-4">
-          <div className="flex items-center justify-between gap-3 w-full lg:w-auto">
-            <button
-              type="button"
-              onClick={() => onNavigate('/')}
-              className="flex items-center gap-3 text-left group min-w-0"
-            >
-              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-emerald-500 via-sky-500 to-amber-400 p-0.5 shadow-md shrink-0">
-                <div className="w-full h-full rounded-full bg-white overflow-hidden">
-                  <img
-                    src="/uploads/guptipara_terracotta_temple.jpg"
-                    alt="Our Balagarh Crest"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              </div>
-              <div className="min-w-0">
-                <div className="text-xl sm:text-3xl font-extrabold tracking-tight leading-none text-[#15438C] truncate">
-                  {lang === 'bn' ? 'আমাদের বলাগড়' : 'Our Balagarh'}
-                </div>
-                <div className="text-[11px] sm:text-sm font-semibold text-slate-700 mt-1 line-clamp-1">
-                  {lang === 'bn'
-                    ? 'বলাগড় ব্লকের সরকারি ও সাধারণ তথ্যের পোর্টাল'
-                    : 'Official Information Portal of Balagarh Block'}
-                </div>
-              </div>
-            </button>
-
-            <div className="hidden xl:block pl-4 border-l-2 border-amber-400 text-sm italic font-bold text-[#1D4ED8] leading-snug shrink-0">
-              {lang === 'bn' ? (
-                <>
-                  বলাগড় ব্লক, হুগলির
-                  <br />
-                  সম্পূর্ণ তথ্যভাণ্ডার
-                </>
-              ) : (
-                <>
-                  Complete Information on
-                  <br />
-                  Balagarh Block, Hooghly
-                </>
-              )}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen((o) => !o)}
-              className="lg:hidden p-2 rounded-lg border border-slate-200 bg-slate-50 text-[#15438C] hover:bg-slate-100 shrink-0"
-              aria-label="Toggle Menu"
-              aria-expanded={mobileMenuOpen}
-            >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2.5 w-full lg:w-auto">
-            {/* Bilingual Language Switcher */}
-            <div className="inline-flex items-center justify-center gap-1.5 bg-slate-100 p-1 rounded-lg border border-slate-200 shrink-0 self-start sm:self-auto">
-              <Globe className="w-4 h-4 text-blue-600 ml-1.5" />
+            {/* Compact Bilingual Toggle */}
+            <div className="inline-flex items-center gap-1 bg-white/10 p-0.5 rounded-lg border border-white/15 shrink-0">
+              <Globe className="w-3.5 h-3.5 text-sky-300 ml-1" />
               <button
                 type="button"
                 onClick={() => setLang('en')}
-                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors whitespace-nowrap ${
+                className={`px-2 py-0.5 text-[11px] font-bold rounded-md transition-colors whitespace-nowrap ${
                   lang === 'en'
-                    ? 'bg-gradient-to-r from-[#1D4ED8] to-[#0284C7] text-white shadow-sm'
-                    : 'text-slate-700 hover:text-slate-900'
+                    ? 'bg-amber-400 text-slate-950 shadow-xs'
+                    : 'text-slate-200 hover:text-white'
                 }`}
               >
                 English
@@ -297,42 +234,122 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
               <button
                 type="button"
                 onClick={() => setLang('bn')}
-                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors whitespace-nowrap ${
+                className={`px-2 py-0.5 text-[11px] font-bold rounded-md transition-colors whitespace-nowrap ${
                   lang === 'bn'
-                    ? 'bg-gradient-to-r from-[#16A34A] to-[#0D9488] text-white shadow-sm'
-                    : 'text-slate-700 hover:text-slate-900'
+                    ? 'bg-emerald-500 text-white shadow-xs'
+                    : 'text-slate-200 hover:text-white'
                 }`}
               >
                 বাংলা
               </button>
             </div>
+          </div>
+        </div>
+      </div>
 
-            {/* Search Bar */}
+      {/* Architectural Civic Brand & Search Header */}
+      <header className="relative bg-gradient-to-r from-[#FFFFFF] via-[#F6FAFF] to-[#EDF4FF] border-b border-slate-200/90 overflow-hidden">
+        {/* Subtle Hooghly River Wave & Heritage Arch Accent */}
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 1440 160"
+          preserveAspectRatio="none"
+          className="pointer-events-none absolute inset-0 w-full h-full opacity-[0.07] text-[#0A2F66]"
+        >
+          <path
+            fill="currentColor"
+            d="M0,128 C240,80 480,152 720,112 C960,72 1200,136 1440,96 L1440,160 L0,160 Z"
+          />
+          <path
+            fill="currentColor"
+            opacity="0.6"
+            d="M0,144 C320,104 640,160 960,120 C1160,96 1320,128 1440,112 L1440,160 L0,160 Z"
+          />
+        </svg>
+
+        <div className="relative max-w-[1280px] mx-auto px-3 sm:px-4 py-3.5 sm:py-4 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3.5 lg:gap-6">
+          {/* Left Zone: Civic Crest & Wordmark */}
+          <div className="flex items-center justify-between gap-3 w-full lg:w-auto min-w-0">
+            <button
+              type="button"
+              onClick={() => onNavigate('/')}
+              className="flex items-center gap-3.5 text-left group min-w-0"
+            >
+              <div className="w-13 h-13 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-[#0A2F66] via-[#1D4ED8] to-[#0D9488] p-[2.5px] shadow-md shrink-0 group-hover:scale-[1.02] transition-transform">
+                <div className="w-full h-full rounded-[13px] bg-white p-0.5 overflow-hidden">
+                  <img
+                    src="/uploads/guptipara_terracotta_temple.jpg"
+                    alt="Our Balagarh Crest"
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover rounded-[10px]"
+                  />
+                </div>
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-baseline gap-2.5 flex-wrap">
+                  <span className="font-display text-2xl sm:text-[32px] font-extrabold tracking-tight leading-none text-[#0A2B5C]">
+                    {lang === 'bn' ? 'আমাদের বলাগড়' : 'Our Balagarh'}
+                  </span>
+                  <span className="hidden sm:inline text-xs font-semibold text-[#0F766E] tracking-wide">
+                    {lang === 'bn' ? 'হুগলি · পশ্চিমবঙ্গ' : 'Hooghly · West Bengal'}
+                  </span>
+                </div>
+                <div className="text-xs sm:text-sm font-medium text-slate-600 mt-1.5 line-clamp-1">
+                  {lang === 'bn'
+                    ? 'বলাগড় ব্লকের সরকারি, শিক্ষা, স্বাস্থ্য ও নাগরিক তথ্যের পোর্টাল'
+                    : 'Official Civic, Heritage & Public Information Portal of Balagarh Block'}
+                </div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen((o) => !o)}
+              className="lg:hidden p-2.5 rounded-xl border border-slate-200 bg-white text-[#0A2B5C] hover:bg-slate-50 shadow-xs shrink-0"
+              aria-label="Toggle Menu"
+              aria-expanded={mobileMenuOpen}
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
+
+          {/* Right Zone: Spacious Search + Primary Civic Notices Action */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2.5 w-full lg:w-auto shrink-0">
             <form
               onSubmit={onSearchSubmit}
-              className="flex items-center border border-slate-300 rounded-lg overflow-hidden bg-white focus-within:ring-2 focus-within:ring-blue-500 w-full sm:w-72 shadow-xs min-w-0"
+              className="flex items-center border border-slate-300/90 rounded-xl overflow-hidden bg-white focus-within:ring-2 focus-within:ring-blue-600 focus-within:border-blue-600 w-full sm:w-80 lg:w-[340px] shadow-sm min-w-0 transition-shadow"
             >
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={lang === 'bn' ? 'স্কুল, পঞ্চায়েত, খবর খুঁজুন...' : 'Search schools, panchayats, news...'}
-                className="w-full min-w-0 px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none"
+                placeholder={lang === 'bn' ? 'স্কুল, পঞ্চায়েত, হাসপাতাল বা খবর খুঁজুন...' : 'Search schools, panchayats, notices...'}
+                className="w-full min-w-0 px-3.5 py-2.5 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none"
               />
               <button
                 type="submit"
-                className="px-3.5 py-2 bg-gradient-to-r from-[#1565C0] to-[#0284C7] text-white hover:brightness-110 transition-all shrink-0"
+                className="px-4 py-2.5 bg-gradient-to-r from-[#0A2F66] to-[#1D4ED8] text-white hover:brightness-110 transition-all shrink-0 inline-flex items-center gap-1.5 text-xs font-bold"
                 aria-label="Search"
               >
                 <Search className="w-4 h-4" />
+                <span className="hidden sm:inline">{lang === 'bn' ? 'খুঁজুন' : 'Search'}</span>
               </button>
             </form>
+
+            <button
+              type="button"
+              onClick={() => onNavigate('/section/public-services')}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#0F766E] hover:bg-[#0D625B] text-white text-xs sm:text-[13px] font-bold shadow-sm transition-colors whitespace-nowrap shrink-0"
+            >
+              <Landmark className="w-4 h-4 text-amber-300 shrink-0" />
+              <span>{lang === 'bn' ? 'নাগরিক পরিষেবা' : 'Citizen Services'}</span>
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Vibrant Blue Navigation Bar with Multi-Color Bottom Accent Ribbon */}
-      <nav className="bg-[#276CF5] text-white sticky top-0 z-30 shadow-md">
+      {/* Primary Royal Civic Navigation Bar */}
+      <nav className="bg-gradient-to-r from-[#0A2F66] via-[#124694] to-[#0D57A1] text-white sticky top-0 z-30 shadow-md border-b-2 border-amber-400/80">
         <div className="max-w-[1280px] mx-auto px-3 sm:px-4">
           {/* Mobile Sticky Bar */}
           <div className="flex lg:hidden items-center justify-between gap-2 py-2">
@@ -368,9 +385,10 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
           </div>
 
           <div className="hidden lg:flex items-center justify-between gap-0.5">
-            {NAV_GROUPS.map((group) => {
+            {NAV_GROUPS.map((group, idx) => {
               const hasChildren = Boolean(group.children && group.children.length > 0);
               const isActive = group.route === currentRoute || group.children?.some((c) => c.route === currentRoute);
+              const alignRight = idx >= NAV_GROUPS.length - 3;
               return (
                 <div
                   key={group.label_en}
@@ -387,16 +405,18 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
                         onNavigate(group.children[0].route);
                       }
                     }}
-                    className={`flex items-center gap-1 px-2.5 py-2.5 text-xs xl:text-[13px] font-semibold transition-colors whitespace-nowrap shrink-0 ${
-                      isActive ? 'bg-white/20 text-amber-300' : 'hover:bg-white/15 text-white'
+                    className={`flex items-center gap-1 px-2 xl:px-2.5 py-3 text-xs xl:text-[13px] font-semibold transition-colors whitespace-nowrap shrink-0 border-b-2 ${
+                      isActive
+                        ? 'bg-white/12 text-amber-300 border-amber-400'
+                        : 'border-transparent hover:bg-white/10 hover:text-amber-200 text-white'
                     }`}
                   >
                     <span>{lang === 'bn' ? group.label_bn : group.label_en}</span>
-                    {hasChildren && <ChevronDown className="w-3.5 h-3.5 opacity-80" />}
+                    {hasChildren && <ChevronDown className="w-3.5 h-3.5 opacity-75" />}
                   </button>
 
                   {hasChildren && openDropdown === group.label_en && (
-                    <div className="absolute left-0 top-full w-60 bg-white text-slate-800 shadow-xl rounded-b-lg border border-slate-200 py-1.5 z-50">
+                    <div className={`absolute ${alignRight ? 'right-0' : 'left-0'} top-full w-60 bg-white text-slate-800 shadow-xl rounded-b-xl border border-slate-200 py-1.5 z-50`}>
                       {group.children!.map((item) => (
                         <button
                           key={item.route}
@@ -470,16 +490,6 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
             </div>
           )}
         </div>
-        {/* Colorful Multi-Segment Ribbon */}
-        <div className="h-1.5 w-full grid grid-cols-7">
-          <div className="bg-emerald-500" />
-          <div className="bg-sky-400" />
-          <div className="bg-violet-500" />
-          <div className="bg-rose-500" />
-          <div className="bg-amber-400" />
-          <div className="bg-teal-400" />
-          <div className="bg-orange-500" />
-        </div>
       </nav>
 
       {/* Main Content */}
@@ -547,7 +557,7 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
               <li><button type="button" onClick={() => onNavigate('/section/public-services')} className="hover:text-amber-300">▸ {lang === 'bn' ? 'জনপরিষেবা' : 'Public Services'}</button></li>
               <li><button type="button" onClick={() => onNavigate('/section/notices-circulars')} className="hover:text-amber-300">▸ {lang === 'bn' ? 'বিজ্ঞপ্তি ও ডাউনলোড' : 'Notices & Downloads'}</button></li>
               <li><button type="button" onClick={() => onNavigate('/section/contact-information')} className="hover:text-amber-300">▸ {lang === 'bn' ? 'যোগাযোগ' : 'Contact Us'}</button></li>
-              <li><button type="button" onClick={onOpenAdmin} className="text-amber-300 font-semibold hover:underline">▸ {lang === 'bn' ? 'অ্যাডমিন সিএমএস' : 'Admin CMS Portal'}</button></li>
+              <li><button type="button" onClick={onOpenAdmin} className="text-slate-300 hover:text-white">▸ {lang === 'bn' ? 'অ্যাডমিন পোর্টাল' : 'Admin Portal'}</button></li>
             </ul>
           </div>
 
