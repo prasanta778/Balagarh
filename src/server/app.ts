@@ -104,7 +104,8 @@ function slugify(text: string): string {
 function getUserById(uid: number): UserRecord | null {
   const row = db.prepare(`
     SELECT u.id, u.username, u.full_name, u.email, u.role_id, u.assigned_panchayat,
-           u.assigned_institution, u.avatar_url, u.is_active, u.created_at,
+           u.assigned_institution, u.avatar_url, u.phone, u.designation, u.bio, u.address,
+           u.is_active, u.created_at,
            r.slug as role_slug, r.name_en as role_name_en, r.name_bn as role_name_bn,
            r.accent_color, r.permissions_json
     FROM users u
@@ -264,7 +265,7 @@ app.get('/api/auth/csrf', (_req, res) => {
 
 app.get('/api/auth/demo-users', (_req, res) => {
   const users = db.prepare(`
-    SELECT u.id, u.username, u.full_name, u.email, u.assigned_panchayat, u.assigned_institution,
+    SELECT u.id, u.username, u.assigned_panchayat, u.assigned_institution,
            r.slug as role_slug, r.name_en as role_name_en, r.name_bn as role_name_bn, r.accent_color, r.description as role_description
     FROM users u
     JOIN roles r ON r.id = u.role_id
@@ -428,6 +429,84 @@ app.post('/api/auth/change-password', requireAuth, (req: AuthedRequest, res) => 
   );
   logActivity(user, 'change_password', 'auth', user.id, `${user.full_name} changed own account password`);
   res.json({ ok: true });
+});
+
+app.get('/api/auth/profile', requireAuth, (req: AuthedRequest, res) => {
+  res.json({ user: req.cmsUser });
+});
+
+app.put('/api/auth/profile', requireAuth, requireCsrf, (req: AuthedRequest, res) => {
+  const user = req.cmsUser!;
+  const b = req.body || {};
+  const fullName = String(b.full_name ?? user.full_name).trim();
+  const email = String(b.email ?? user.email).trim();
+  if (!fullName || !email || !email.includes('@')) {
+    return res.status(400).json({ error: 'Valid full name and email address are required' });
+  }
+  const phone = b.phone !== undefined ? String(b.phone).trim() : String(user.phone || '');
+  const designation = b.designation !== undefined ? String(b.designation).trim() : String(user.designation || '');
+  const address = b.address !== undefined ? String(b.address).trim() : String(user.address || '');
+  const bio = b.bio !== undefined ? String(b.bio).trim() : String(user.bio || '');
+  const assignedPanchayat =
+    b.assigned_panchayat !== undefined
+      ? String(b.assigned_panchayat || '').trim() || null
+      : user.assigned_panchayat;
+  const assignedInstitution =
+    b.assigned_institution !== undefined
+      ? String(b.assigned_institution || '').trim() || null
+      : user.assigned_institution;
+
+  let avatarUrl = user.avatar_url;
+  if (b.avatar_url !== undefined) {
+    const rawAvatar = String(b.avatar_url || '').trim();
+    if (!rawAvatar) {
+      avatarUrl = null;
+    } else if (
+      rawAvatar.startsWith('/uploads/') ||
+      rawAvatar.startsWith('data:image/') ||
+      isValidExternalUrl(rawAvatar)
+    ) {
+      avatarUrl = rawAvatar;
+    } else {
+      return res.status(400).json({ error: 'Invalid profile photo URL' });
+    }
+  }
+
+  db.prepare(`
+    UPDATE users SET
+      full_name = ?,
+      email = ?,
+      phone = ?,
+      designation = ?,
+      address = ?,
+      bio = ?,
+      assigned_panchayat = ?,
+      assigned_institution = ?,
+      avatar_url = ?
+    WHERE id = ?
+  `).run(fullName, email, phone, designation, address, bio, assignedPanchayat, assignedInstitution, avatarUrl, user.id);
+
+  const updated = getUserById(user.id);
+  logActivity(updated || user, 'update_profile', 'auth', user.id, `${fullName} updated personal profile details`);
+  res.json({ user: updated });
+});
+
+app.post('/api/auth/profile/avatar', requireAuth, requireCsrf, (req: AuthedRequest, res) => {
+  upload.single('avatar')(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ error: err instanceof Error ? err.message : 'Profile photo upload failed' });
+    }
+    const file = req.file;
+    if (!file || !file.mimetype.startsWith('image/')) {
+      return res.status(400).json({ error: 'Please select a valid image file (JPG, PNG, WEBP, or GIF)' });
+    }
+    const user = req.cmsUser!;
+    const avatarUrl = `/uploads/${file.filename}`;
+    db.prepare('UPDATE users SET avatar_url = ? WHERE id = ?').run(avatarUrl, user.id);
+    const updated = getUserById(user.id);
+    logActivity(updated || user, 'update_avatar', 'auth', user.id, `${user.full_name} updated profile photo`);
+    res.json({ avatar_url: avatarUrl, user: updated });
+  });
 });
 
 // ============================================================================
@@ -700,8 +779,9 @@ app.get('/api/public/search', (req, res) => {
 
 app.use('/api/admin', requireAuth, requireCsrf);
 
-app.get('/api/admin/dashboard', (_req: AuthedRequest, res) => {
+app.get('/api/admin/dashboard', (req: AuthedRequest, res) => {
   promoteScheduledContent();
+  const isSuperAdmin = req.cmsUser?.role_slug === 'super_admin';
   const totals = db.prepare(`
     SELECT
       COUNT(*) as total,
@@ -714,7 +794,9 @@ app.get('/api/admin/dashboard', (_req: AuthedRequest, res) => {
 
   const totalEvents = (db.prepare('SELECT COUNT(*) as c FROM events WHERE deleted_at IS NULL').get() as { c: number }).c;
   const totalMedia = (db.prepare('SELECT COUNT(*) as c FROM media').get() as { c: number }).c;
-  const totalUsers = (db.prepare('SELECT COUNT(*) as c FROM users WHERE is_active = 1').get() as { c: number }).c;
+  const totalUsers = isSuperAdmin
+    ? (db.prepare('SELECT COUNT(*) as c FROM users WHERE is_active = 1').get() as { c: number }).c
+    : 0;
 
   const sectionRows = db.prepare(`
     SELECT section_slug, COUNT(*) as count
@@ -729,13 +811,15 @@ app.get('/api/admin/dashboard', (_req: AuthedRequest, res) => {
     SELECT * FROM activity_logs ORDER BY id DESC LIMIT 12
   `).all();
 
-  const rolesSummary = db.prepare(`
-    SELECT r.slug, r.name_en, r.name_bn, r.accent_color, COUNT(u.id) as user_count
-    FROM roles r
-    LEFT JOIN users u ON u.role_id = r.id AND u.is_active = 1
-    GROUP BY r.id
-    ORDER BY r.id ASC
-  `).all();
+  const rolesSummary = isSuperAdmin
+    ? db.prepare(`
+        SELECT r.slug, r.name_en, r.name_bn, r.accent_color, COUNT(u.id) as user_count
+        FROM roles r
+        LEFT JOIN users u ON u.role_id = r.id AND u.is_active = 1
+        GROUP BY r.id
+        ORDER BY r.id ASC
+      `).all()
+    : [];
 
   res.json({
     totalContents: totals.total || 0,
@@ -1800,19 +1884,44 @@ app.delete('/api/admin/tags/:id', (req: AuthedRequest, res) => {
 // USERS, ROLES & ACTIVITY LOGS
 // ============================================================================
 
+app.post('/api/admin/switch-role', (req: AuthedRequest, res) => {
+  const actor = req.cmsUser!;
+  if (actor.role_slug !== 'super_admin') {
+    return res.status(403).json({ error: 'Only Super Administrator can switch between user roles' });
+  }
+  const targetUsername = String(req.body?.username || '').trim();
+  if (!targetUsername) {
+    return res.status(400).json({ error: 'Target username is required' });
+  }
+  const row = db.prepare('SELECT id FROM users WHERE username = ? AND is_active = 1').get(targetUsername) as
+    | { id: number }
+    | undefined;
+  if (!row) {
+    return res.status(404).json({ error: 'Target active user not found' });
+  }
+  const targetUser = getUserById(row.id);
+  if (!targetUser) {
+    return res.status(404).json({ error: 'Target user not found' });
+  }
+  const token = signAuthToken(targetUser.id);
+  const csrfToken = createCsrfToken();
+  logActivity(actor, 'switch_role', 'users', targetUser.id, `Super Admin switched workspace role to ${targetUser.role_name_en} (${targetUser.username})`);
+  res.json({ token, csrfToken, user: targetUser });
+});
+
 app.get('/api/admin/users-roles', (req: AuthedRequest, res) => {
   const user = req.cmsUser!;
-  if (!hasPermission(user, 'users', 'view') && !user.permissions.modules.includes('*')) {
-    return res.status(403).json({ error: 'Super Administrator access required for Users & Roles' });
+  if (user.role_slug !== 'super_admin') {
+    return res.status(403).json({ error: 'Only Super Administrator can view all user accounts and roles' });
   }
-  const isSuperAdmin = user.role_slug === 'super_admin' || user.permissions.modules.includes('*');
   const roles = db.prepare('SELECT * FROM roles ORDER BY id ASC').all().map((r: Record<string, unknown>) => ({
     ...r,
     permissions: JSON.parse(String(r.permissions_json)),
   }));
   const users = db.prepare(`
-    SELECT u.id, u.username, u.full_name, u.email, u.role_id, u.assigned_panchayat, u.assigned_institution, u.is_active, u.created_at,
-           ${isSuperAdmin ? 'u.visible_password,' : ''}
+    SELECT u.id, u.username, u.full_name, u.email, u.role_id, u.assigned_panchayat, u.assigned_institution,
+           u.avatar_url, u.phone, u.designation, u.bio, u.address, u.is_active, u.created_at,
+           u.visible_password,
            r.slug as role_slug, r.name_en as role_name_en, r.name_bn as role_name_bn, r.accent_color
     FROM users u JOIN roles r ON r.id = u.role_id
     ORDER BY u.id ASC
@@ -1822,7 +1931,7 @@ app.get('/api/admin/users-roles', (req: AuthedRequest, res) => {
 
 app.post('/api/admin/users', (req: AuthedRequest, res) => {
   const user = req.cmsUser!;
-  if (!hasPermission(user, 'users', 'create') && !user.permissions.modules.includes('*')) {
+  if (user.role_slug !== 'super_admin') {
     return res.status(403).json({ error: 'Super Administrator access required' });
   }
   const { username, full_name, email, password, role_id, assigned_panchayat, assigned_institution } = req.body || {};
@@ -1849,7 +1958,7 @@ app.post('/api/admin/users', (req: AuthedRequest, res) => {
 
 app.put('/api/admin/users/:id', (req: AuthedRequest, res) => {
   const user = req.cmsUser!;
-  if (!hasPermission(user, 'users', 'edit') && !user.permissions.modules.includes('*')) {
+  if (user.role_slug !== 'super_admin') {
     return res.status(403).json({ error: 'Super Administrator access required' });
   }
   const id = Number(req.params.id);
@@ -1870,7 +1979,7 @@ app.put('/api/admin/users/:id', (req: AuthedRequest, res) => {
 
 app.post('/api/admin/users/:id/reset-password', (req: AuthedRequest, res) => {
   const user = req.cmsUser!;
-  if (user.role_slug !== 'super_admin' && !user.permissions.modules.includes('*')) {
+  if (user.role_slug !== 'super_admin') {
     return res.status(403).json({ error: 'Only Super Administrator can reset user passwords' });
   }
   const targetId = Number(req.params.id);
@@ -1895,7 +2004,7 @@ app.post('/api/admin/users/:id/reset-password', (req: AuthedRequest, res) => {
 
 app.put('/api/admin/roles/:id/permissions', (req: AuthedRequest, res) => {
   const user = req.cmsUser!;
-  if (!user.permissions.modules.includes('*')) {
+  if (user.role_slug !== 'super_admin') {
     return res.status(403).json({ error: 'Only Super Administrator can modify role permission matrices' });
   }
   const id = Number(req.params.id);

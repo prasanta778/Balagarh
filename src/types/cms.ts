@@ -32,6 +32,10 @@ export interface UserRecord {
   assigned_panchayat: string | null;
   assigned_institution: string | null;
   avatar_url: string | null;
+  phone?: string | null;
+  designation?: string | null;
+  bio?: string | null;
+  address?: string | null;
   is_active: number;
   created_at: string;
   visible_password?: string;

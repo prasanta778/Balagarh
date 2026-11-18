@@ -30,9 +30,10 @@ export const UsersRolesView: React.FC<{ currentUser: UserRecord }> = ({ currentU
   });
   const [feedback, setFeedback] = useState('');
 
-  const isSuperAdmin = currentUser.role_slug === 'super_admin' || currentUser.permissions.modules.includes('*');
+  const isSuperAdmin = currentUser.role_slug === 'super_admin';
 
   const load = () => {
+    if (!isSuperAdmin) return;
     apiFetch<{ roles: RoleRecord[]; users: UserRecord[] }>('/api/admin/users-roles')
       .then((res) => {
         setRoles(res.roles);
@@ -47,7 +48,19 @@ export const UsersRolesView: React.FC<{ currentUser: UserRecord }> = ({ currentU
 
   useEffect(() => {
     load();
-  }, []);
+  }, [isSuperAdmin]);
+
+  if (!isSuperAdmin) {
+    return (
+      <div className="bg-white rounded-2xl border border-rose-200 p-8 text-center space-y-2 shadow-sm">
+        <Shield className="w-10 h-10 text-rose-600 mx-auto" />
+        <h3 className="text-base font-extrabold text-slate-900">Super Administrator Access Required</h3>
+        <p className="text-xs text-slate-600 max-w-md mx-auto">
+          Only the Super Administrator can view all user accounts, inspect credentials, switch roles, or modify role permissions.
+        </p>
+      </div>
+    );
+  }
 
   const createUser = async (e: React.FormEvent) => {
     e.preventDefault();

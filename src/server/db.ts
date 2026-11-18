@@ -50,6 +50,10 @@ export function initDatabase() {
       assigned_panchayat TEXT,
       assigned_institution TEXT,
       avatar_url TEXT,
+      phone TEXT DEFAULT '',
+      designation TEXT DEFAULT '',
+      bio TEXT DEFAULT '',
+      address TEXT DEFAULT '',
       is_active INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -273,6 +277,18 @@ export function initDatabase() {
   const userCols = db.prepare('PRAGMA table_info(users)').all() as Array<{ name: string }>;
   if (!userCols.some((c) => c.name === 'visible_password')) {
     db.exec("ALTER TABLE users ADD COLUMN visible_password TEXT NOT NULL DEFAULT 'balagarh2026'");
+  }
+  if (!userCols.some((c) => c.name === 'phone')) {
+    db.exec("ALTER TABLE users ADD COLUMN phone TEXT DEFAULT ''");
+  }
+  if (!userCols.some((c) => c.name === 'designation')) {
+    db.exec("ALTER TABLE users ADD COLUMN designation TEXT DEFAULT ''");
+  }
+  if (!userCols.some((c) => c.name === 'bio')) {
+    db.exec("ALTER TABLE users ADD COLUMN bio TEXT DEFAULT ''");
+  }
+  if (!userCols.some((c) => c.name === 'address')) {
+    db.exec("ALTER TABLE users ADD COLUMN address TEXT DEFAULT ''");
   }
 
   const roleCount = (db.prepare('SELECT COUNT(*) as c FROM roles').get() as { c: number }).c;

@@ -9,8 +9,6 @@ import { apiFetch, loginDemoRole, loginWithPassword } from '../../lib/api';
 interface DemoUserSummary {
   id: number;
   username: string;
-  full_name: string;
-  email: string;
   assigned_panchayat: string | null;
   assigned_institution: string | null;
   role_slug: string;
@@ -312,9 +310,7 @@ export const AdminLogin: React.FC<{
                       {u.role_name_bn}
                     </div>
                     <div className="text-[11px] text-slate-500 mt-1 line-clamp-2">
-                      {u.full_name}
-                      {u.assigned_panchayat ? ` · ${u.assigned_panchayat}` : ''}
-                      {u.assigned_institution ? ` · ${u.assigned_institution}` : ''}
+                      {u.assigned_panchayat || u.assigned_institution || u.role_description}
                     </div>
                   </div>
                 </button>

@@ -136,3 +136,12 @@ export async function loginWithPassword(username: string, password: string): Pro
   setSessionTokens(res.token, res.csrfToken);
   return res.user;
 }
+
+export async function switchAdminRole(username: string): Promise<UserRecord> {
+  const res = await apiFetch<{ token: string; csrfToken: string; user: UserRecord }>('/api/admin/switch-role', {
+    method: 'POST',
+    body: JSON.stringify({ username }),
+  });
+  setSessionTokens(res.token, res.csrfToken);
+  return res.user;
+}

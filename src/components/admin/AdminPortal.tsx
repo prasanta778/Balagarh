@@ -2,15 +2,16 @@ import React, { useEffect, useState } from 'react';
 import {
   Activity, Bell, Building2, CalendarDays, Crown, ExternalLink, FileText,
   GraduationCap, HeartPulse, Home, Image as ImageIcon, KeyRound, LayoutDashboard, LayoutTemplate,
-  LogOut, Megaphone, Menu, Newspaper, Plus, Shield, ShieldCheck, Tag, UploadCloud, Users, X,
+  LogOut, Megaphone, Menu, Newspaper, Plus, Shield, ShieldCheck, Tag, UploadCloud, UserCircle, Users, X,
 } from 'lucide-react';
 import type { ContentSection, DashboardStats, Language, UserRecord } from '../../types/cms';
-import { apiFetch, loginDemoRole } from '../../lib/api';
+import { apiFetch, switchAdminRole } from '../../lib/api';
 import { DynamicIcon } from '../DynamicIcon';
 import { ContentManagerView } from './ContentManagerView';
 import { EventsManagerView } from './EventsManagerView';
 import { HomepageManagerView } from './HomepageManagerView';
 import { MediaLibraryView } from './MediaLibraryView';
+import { ProfileView } from './ProfileView';
 import { ActivityLogsView, TaxonomyManagerView, UsersRolesView } from './UsersRolesTaxonomyView';
 
 type AdminTab =
@@ -21,7 +22,8 @@ type AdminTab =
   | { type: 'homepage' }
   | { type: 'taxonomy' }
   | { type: 'users' }
-  | { type: 'logs' };
+  | { type: 'logs' }
+  | { type: 'profile' };
 
 interface AdminPortalProps {
   user: UserRecord;
@@ -51,8 +53,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [confirmPass, setConfirmPass] = useState('');
   const [passMsg, setPassMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const [passSaving, setPassSaving] = useState(false);
-  const [demoUsers, setDemoUsers] = useState<Array<{ username: string; role_name_en: string; accent_color: string }>>([]);
+  const [demoUsers, setDemoUsers] = useState<Array<{ username: string; full_name: string; role_name_en: string; accent_color: string }>>([]);
 
+  const isSuperAdmin = user.role_slug === 'super_admin';
   const canAccess = (mod: string) =>
     user.permissions.modules.includes('*') || user.permissions.modules.includes(mod);
 
@@ -68,13 +71,18 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
   useEffect(() => {
     loadDashboardData();
-    apiFetch<{ users: Array<{ username: string; role_name_en: string; accent_color: string }> }>('/api/auth/demo-users')
-      .then((res) => setDemoUsers(res.users))
-      .catch(() => {});
-  }, [user.id, tab.type]);
+    if (isSuperAdmin) {
+      apiFetch<{ users: Array<{ username: string; full_name: string; role_name_en: string; accent_color: string; is_active: number }> }>('/api/admin/users-roles')
+        .then((res) => setDemoUsers(res.users.filter((u) => u.is_active === 1)))
+        .catch(() => setDemoUsers([]));
+    } else {
+      setDemoUsers([]);
+    }
+  }, [user.id, tab.type, isSuperAdmin]);
 
   const switchRole = async (username: string) => {
-    const nextUser = await loginDemoRole(username);
+    if (!isSuperAdmin) return;
+    const nextUser = await switchAdminRole(username);
     setUser(nextUser);
     setTab({ type: 'dashboard' });
   };
@@ -296,7 +304,18 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             </button>
           )}
 
-          {user.permissions.modules.includes('*') && (
+          <button
+            type="button"
+            onClick={() => { setTab({ type: 'profile' }); setSidebarOpen(false); }}
+            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-bold transition-colors ${
+              tab.type === 'profile' ? 'bg-blue-600 text-white shadow' : 'text-slate-200 hover:bg-white/10'
+            }`}
+          >
+            <UserCircle className="w-4 h-4 shrink-0" />
+            <span>{lang === 'bn' ? 'আমার প্রোফাইল / My Profile' : 'My Profile'}</span>
+          </button>
+
+          {isSuperAdmin && (
             <button
               type="button"
               onClick={() => { setTab({ type: 'users' }); setSidebarOpen(false); }}
@@ -305,7 +324,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               }`}
             >
               <Users className="w-4 h-4 shrink-0" />
-              <span>Users & Role Permissions</span>
+              <span>Users &amp; Role Permissions</span>
             </button>
           )}
 
@@ -404,19 +423,40 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              {/* Role Quick-Switch Dropdown */}
-              <select
-                value={user.username}
-                onChange={(e) => switchRole(e.target.value)}
-                title="Switch Role to test Module-Level RBAC"
-                className="px-2 sm:px-2.5 py-1.5 rounded-lg bg-white/15 border border-white/25 text-white text-xs font-semibold focus:outline-none max-w-[145px] sm:max-w-none truncate"
+              {/* Role Quick-Switch Dropdown (STRICTLY SUPER ADMIN ONLY) */}
+              {isSuperAdmin && demoUsers.length > 0 && (
+                <select
+                  value={user.username}
+                  onChange={(e) => switchRole(e.target.value)}
+                  title="Super Admin: Switch user role to inspect workspace permissions"
+                  className="px-2 sm:px-2.5 py-1.5 rounded-lg bg-white/15 border border-white/25 text-white text-xs font-semibold focus:outline-none max-w-[165px] sm:max-w-none truncate"
+                >
+                  {demoUsers.map((du) => (
+                    <option key={du.username} value={du.username} className="text-slate-900">
+                      Role: {du.role_name_en} ({du.full_name})
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {/* My Profile Quick Button */}
+              <button
+                type="button"
+                onClick={() => setTab({ type: 'profile' })}
+                className={`px-2.5 py-1 rounded-lg border text-xs font-bold inline-flex items-center gap-1.5 transition-colors ${
+                  tab.type === 'profile'
+                    ? 'bg-white text-slate-900 border-white'
+                    : 'bg-white/15 hover:bg-white/25 border-white/25 text-white'
+                }`}
+                title={lang === 'bn' ? 'আমার প্রোফাইল' : 'My Profile'}
               >
-                {demoUsers.map((du) => (
-                  <option key={du.username} value={du.username} className="text-slate-900">
-                    Role: {du.role_name_en}
-                  </option>
-                ))}
-              </select>
+                {user.avatar_url ? (
+                  <img src={user.avatar_url} alt={user.full_name} className="w-5 h-5 rounded-full object-cover border border-white/70" />
+                ) : (
+                  <UserCircle className="w-4 h-4 text-amber-300" />
+                )}
+                <span className="max-w-[95px] truncate">{user.full_name}</span>
+              </button>
 
               {/* Change My Password Button */}
               <button
@@ -501,10 +541,16 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                   <div
-                    className="w-14 h-14 rounded-2xl text-white flex items-center justify-center shrink-0 shadow-md"
+                    className="w-14 h-14 rounded-2xl text-white flex items-center justify-center shrink-0 shadow-md overflow-hidden"
                     style={{ backgroundColor: user.accent_color }}
                   >
-                    {user.role_slug === 'super_admin' ? <Crown className="w-7 h-7" /> : <ShieldCheck className="w-7 h-7" />}
+                    {user.avatar_url ? (
+                      <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" />
+                    ) : user.role_slug === 'super_admin' ? (
+                      <Crown className="w-7 h-7" />
+                    ) : (
+                      <ShieldCheck className="w-7 h-7" />
+                    )}
                   </div>
                   <div>
                     <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900">
@@ -517,6 +563,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setTab({ type: 'profile' })}
+                    className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold inline-flex items-center gap-1.5 border border-slate-200"
+                  >
+                    <UserCircle className="w-4 h-4 text-blue-600" />
+                    <span>{lang === 'bn' ? 'আমার প্রোফাইল' : 'My Profile'}</span>
+                  </button>
                   {user.permissions.actions.includes('create') && (
                     <button
                       type="button"
@@ -669,7 +723,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                         <span>News Desk</span>
                       </button>
                     )}
-                    {user.permissions.modules.includes('*') && (
+                    {isSuperAdmin && (
                       <button
                         type="button"
                         onClick={() => setTab({ type: 'users' })}
@@ -737,7 +791,19 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
           {tab.type === 'taxonomy' && <TaxonomyManagerView sections={sections} />}
 
-          {tab.type === 'users' && <UsersRolesView currentUser={user} />}
+          {tab.type === 'users' && isSuperAdmin && <UsersRolesView currentUser={user} />}
+
+          {tab.type === 'profile' && (
+            <ProfileView
+              user={user}
+              lang={lang}
+              onUserUpdated={setUser}
+              onOpenChangePassword={() => {
+                setPassMsg(null);
+                setChangePassOpen(true);
+              }}
+            />
+          )}
 
           {tab.type === 'logs' && <ActivityLogsView />}
         </main>

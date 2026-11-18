@@ -174,6 +174,21 @@ function hasPermission(user: UserRecord, moduleSlug: string, action: 'view' | 'c
   return modules.includes(moduleSlug);
 }
 
+function toSafeUser(u: LocalUser, roles: RoleRecord[]): UserRecord {
+  const { local_password: _lp, ...rest } = u;
+  const role = roles.find((r) => r.id === u.role_id);
+  return role
+    ? {
+        ...rest,
+        role_slug: role.slug,
+        role_name_en: role.name_en,
+        role_name_bn: role.name_bn,
+        accent_color: role.accent_color,
+        permissions: role.permissions,
+      }
+    : rest;
+}
+
 function getAuthedUser(store: LocalCmsStore, headers: Headers): UserRecord | null {
   const auth = headers.get('Authorization') || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
@@ -181,17 +196,7 @@ function getAuthedUser(store: LocalCmsStore, headers: Headers): UserRecord | nul
   const uid = Number(token.slice(6));
   const u = store.users.find((x) => x.id === uid && x.is_active === 1);
   if (!u) return null;
-  const role = store.roles.find((r) => r.id === u.role_id);
-  return role
-    ? {
-        ...u,
-        role_slug: role.slug,
-        role_name_en: role.name_en,
-        role_name_bn: role.name_bn,
-        accent_color: role.accent_color,
-        permissions: role.permissions,
-      }
-    : u;
+  return toSafeUser(u, store.roles);
 }
 
 function hydrateContent(store: LocalCmsStore, c: ContentItem): ContentItem {
@@ -321,7 +326,23 @@ export async function localCmsFetch<T>(url: string, options: RequestInit = {}): 
   }
 
   if (pathname === '/api/auth/demo-users') {
-    const users = store.users.filter((u) => u.is_active === 1);
+    const users = store.users
+      .filter((u) => u.is_active === 1)
+      .map((u) => {
+        const safe = toSafeUser(u, store.roles);
+        const role = store.roles.find((r) => r.id === u.role_id);
+        return {
+          id: safe.id,
+          username: safe.username,
+          assigned_panchayat: safe.assigned_panchayat,
+          assigned_institution: safe.assigned_institution,
+          role_slug: safe.role_slug,
+          role_name_en: safe.role_name_en,
+          role_name_bn: safe.role_name_bn,
+          accent_color: safe.accent_color,
+          role_description: role?.description || '',
+        };
+      });
     return { users } as T;
   }
 
@@ -337,17 +358,7 @@ export async function localCmsFetch<T>(url: string, options: RequestInit = {}): 
         throw makeError('Incorrect password', 401);
       }
     }
-    const role = store.roles.find((r) => r.id === u.role_id);
-    const user: UserRecord = role
-      ? {
-          ...u,
-          role_slug: role.slug,
-          role_name_en: role.name_en,
-          role_name_bn: role.name_bn,
-          accent_color: role.accent_color,
-          permissions: role.permissions,
-        }
-      : u;
+    const user = toSafeUser(u, store.roles);
     addLog(store, user, 'login', 'auth', user.id, `${user.full_name} signed in as ${user.role_name_en}`);
     saveStore(store);
     return {
@@ -435,6 +446,62 @@ export async function localCmsFetch<T>(url: string, options: RequestInit = {}): 
     addLog(store, authed, 'change_password', 'auth', authed.id, `${authed.full_name} changed own account password`);
     saveStore(store);
     return { ok: true } as T;
+  }
+
+  if (pathname === '/api/auth/profile' && method === 'GET') {
+    const authed = getAuthedUser(store, headers);
+    if (!authed) throw makeError('Authentication required', 401);
+    return { user: authed } as T;
+  }
+
+  if (pathname === '/api/auth/profile' && method === 'PUT') {
+    const authed = getAuthedUser(store, headers);
+    if (!authed) throw makeError('Authentication required', 401);
+    const target = store.users.find((x) => x.id === authed.id);
+    if (!target) throw makeError('Account not found', 404);
+    const fullName = String(body.full_name ?? target.full_name).trim();
+    const email = String(body.email ?? target.email).trim();
+    if (!fullName || !email || !email.includes('@')) {
+      throw makeError('Valid full name and email address are required', 400);
+    }
+    target.full_name = fullName;
+    target.email = email;
+    if (body.phone !== undefined) target.phone = String(body.phone || '').trim();
+    if (body.designation !== undefined) target.designation = String(body.designation || '').trim();
+    if (body.address !== undefined) target.address = String(body.address || '').trim();
+    if (body.bio !== undefined) target.bio = String(body.bio || '').trim();
+    if (body.assigned_panchayat !== undefined) {
+      target.assigned_panchayat = String(body.assigned_panchayat || '').trim() || null;
+    }
+    if (body.assigned_institution !== undefined) {
+      target.assigned_institution = String(body.assigned_institution || '').trim() || null;
+    }
+    if (body.avatar_url !== undefined) {
+      const rawAvatar = String(body.avatar_url || '').trim();
+      target.avatar_url = rawAvatar || null;
+    }
+    const updated = toSafeUser(target, store.roles);
+    addLog(store, updated, 'update_profile', 'auth', updated.id, `${updated.full_name} updated personal profile details`);
+    saveStore(store);
+    return { user: updated } as T;
+  }
+
+  if (pathname === '/api/auth/profile/avatar' && method === 'POST') {
+    const authed = getAuthedUser(store, headers);
+    if (!authed) throw makeError('Authentication required', 401);
+    const target = store.users.find((x) => x.id === authed.id);
+    if (!target) throw makeError('Account not found', 404);
+    const fd = options.body as FormData;
+    const f = fd?.get?.('avatar');
+    if (!(f instanceof File) || !f.type.startsWith('image/')) {
+      throw makeError('Please select a valid image file (JPG, PNG, WEBP, or GIF)', 400);
+    }
+    const dataUrl = await readFileAsDataUrl(f);
+    target.avatar_url = dataUrl;
+    const updated = toSafeUser(target, store.roles);
+    addLog(store, updated, 'update_avatar', 'auth', updated.id, `${updated.full_name} updated profile photo`);
+    saveStore(store);
+    return { avatar_url: dataUrl, user: updated } as T;
   }
 
   // ---- PUBLIC ----
@@ -539,17 +606,20 @@ export async function localCmsFetch<T>(url: string, options: RequestInit = {}): 
   if (!user) throw makeError('Authentication required', 401);
 
   if (pathname === '/api/admin/dashboard') {
+    const isSuperAdmin = user.role_slug === 'super_admin';
     const sectionCounts: Record<string, number> = {};
     for (const c of store.contents) {
       sectionCounts[c.section_slug] = (sectionCounts[c.section_slug] || 0) + 1;
     }
-    const rolesSummary = store.roles.map((r) => ({
-      slug: r.slug,
-      name_en: r.name_en,
-      name_bn: r.name_bn,
-      accent_color: r.accent_color,
-      user_count: store.users.filter((u) => u.role_id === r.id && u.is_active === 1).length,
-    }));
+    const rolesSummary = isSuperAdmin
+      ? store.roles.map((r) => ({
+          slug: r.slug,
+          name_en: r.name_en,
+          name_bn: r.name_bn,
+          accent_color: r.accent_color,
+          user_count: store.users.filter((u) => u.role_id === r.id && u.is_active === 1).length,
+        }))
+      : [];
     return {
       totalContents: store.contents.length,
       publishedContents: store.contents.filter((c) => c.status === 'published').length,
@@ -558,7 +628,7 @@ export async function localCmsFetch<T>(url: string, options: RequestInit = {}): 
       unpublishedContents: store.contents.filter((c) => c.status === 'unpublished').length,
       totalEvents: store.events.length,
       totalMedia: store.media.length,
-      totalUsers: store.users.filter((u) => u.is_active === 1).length,
+      totalUsers: isSuperAdmin ? store.users.filter((u) => u.is_active === 1).length : 0,
       sectionCounts,
       recentActivities: store.logs.slice(0, 12),
       rolesSummary,
@@ -1316,18 +1386,37 @@ export async function localCmsFetch<T>(url: string, options: RequestInit = {}): 
   }
 
   // ---- USERS, ROLES & LOGS ----
+  if (pathname === '/api/admin/switch-role' && method === 'POST') {
+    if (user.role_slug !== 'super_admin') {
+      throw makeError('Only Super Administrator can switch between user roles', 403);
+    }
+    const targetUsername = String(body.username || '').trim();
+    const target = store.users.find((u) => u.username === targetUsername && u.is_active === 1);
+    if (!target) throw makeError('Target active user not found', 404);
+    const targetSafe = toSafeUser(target, store.roles);
+    addLog(store, user, 'switch_role', 'users', targetSafe.id, `Super Admin switched workspace role to ${targetSafe.role_name_en} (${targetSafe.username})`);
+    saveStore(store);
+    return {
+      token: `local:${targetSafe.id}`,
+      csrfToken: 'local-csrf-token',
+      user: targetSafe,
+    } as T;
+  }
+
   if (pathname === '/api/admin/users-roles') {
-    const isSuperAdmin = user.role_slug === 'super_admin' || user.permissions.modules.includes('*');
+    if (user.role_slug !== 'super_admin') {
+      throw makeError('Only Super Administrator can view all user accounts and roles', 403);
+    }
     const safeUsers = store.users.map((u) => {
-      const { local_password, ...rest } = u;
-      return isSuperAdmin ? { ...rest, visible_password: local_password || 'balagarh2026' } : rest;
+      const safe = toSafeUser(u, store.roles);
+      return { ...safe, visible_password: u.local_password || 'balagarh2026' };
     });
     return { roles: store.roles, users: safeUsers } as T;
   }
 
   const userResetMatch = pathname.match(/^\/api\/admin\/users\/(\d+)\/reset-password$/);
   if (userResetMatch && method === 'POST') {
-    if (user.role_slug !== 'super_admin' && !user.permissions.modules.includes('*')) {
+    if (user.role_slug !== 'super_admin') {
       throw makeError('Only Super Administrator can reset user passwords', 403);
     }
     const id = Number(userResetMatch[1]);
@@ -1342,6 +1431,9 @@ export async function localCmsFetch<T>(url: string, options: RequestInit = {}): 
   }
 
   if (pathname === '/api/admin/users' && method === 'POST') {
+    if (user.role_slug !== 'super_admin') {
+      throw makeError('Super Administrator access required', 403);
+    }
     const id = nextId(store, 'users');
     const roleId = Number(body.role_id);
     const role = store.roles.find((r) => r.id === roleId) || store.roles[0];
@@ -1369,6 +1461,9 @@ export async function localCmsFetch<T>(url: string, options: RequestInit = {}): 
 
   const userPutMatch = pathname.match(/^\/api\/admin\/users\/(\d+)$/);
   if (userPutMatch && method === 'PUT') {
+    if (user.role_slug !== 'super_admin') {
+      throw makeError('Super Administrator access required', 403);
+    }
     const id = Number(userPutMatch[1]);
     const idx = store.users.findIndex((u) => u.id === id);
     if (idx !== -1) {
@@ -1400,6 +1495,9 @@ export async function localCmsFetch<T>(url: string, options: RequestInit = {}): 
 
   const rolePermMatch = pathname.match(/^\/api\/admin\/roles\/(\d+)\/permissions$/);
   if (rolePermMatch && method === 'PUT') {
+    if (user.role_slug !== 'super_admin') {
+      throw makeError('Only Super Administrator can modify role permission matrices', 403);
+    }
     const id = Number(rolePermMatch[1]);
     const role = store.roles.find((r) => r.id === id);
     if (role && body.permissions) {
