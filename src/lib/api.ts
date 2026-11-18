@@ -30,7 +30,8 @@ async function ensureCsrfToken(): Promise<string> {
       csrfToken = 'local-csrf-token';
       return csrfToken;
     }
-    const data = await res.json();
+    const text = await res.text();
+    const data = text ? (JSON.parse(text) as { csrfToken?: string }) : {};
     csrfToken = data.csrfToken || 'local-csrf-token';
     localStorage.setItem('balagarh_cms_csrf', csrfToken);
     return csrfToken;
@@ -82,9 +83,7 @@ export async function apiFetch<T>(url: string, options: RequestInit = {}): Promi
 
   const isApiMissing =
     !contentType.includes('application/json') ||
-    res.status === 502 ||
-    res.status === 503 ||
-    res.status === 504 ||
+    res.status >= 500 ||
     (res.status === 404 &&
       (url.startsWith('/api/auth/') || url.startsWith('/api/admin/') || url === '/api/public/bootstrap'));
 
@@ -92,9 +91,24 @@ export async function apiFetch<T>(url: string, options: RequestInit = {}): Promi
     return localCmsFetch<T>(url, options);
   }
 
-  const data = await res.json().catch(() => ({}));
+  let rawText = '';
+  try {
+    rawText = await res.text();
+  } catch {
+    return localCmsFetch<T>(url, options);
+  }
+
+  let data: Record<string, unknown> = {};
+  if (rawText.trim()) {
+    try {
+      data = JSON.parse(rawText) as Record<string, unknown>;
+    } catch {
+      return localCmsFetch<T>(url, options);
+    }
+  }
+
   if (!res.ok) {
-    const err = new Error(data.error || `Request failed (${res.status})`) as Error & {
+    const err = new Error(String(data.error || `Request failed (${res.status})`)) as Error & {
       status?: number;
       usage?: unknown;
     };
