@@ -83,6 +83,13 @@ async function main() {
     ORDER BY b.sort_order ASC, b.id ASC
   `).all();
 
+  const allBanners = db.prepare(`
+    SELECT b.*, m.url as image_url
+    FROM homepage_banners b
+    LEFT JOIN media m ON m.id = b.media_id
+    ORDER BY b.sort_order ASC, b.id ASC
+  `).all();
+
   const homepageSections = db.prepare(`
     SELECT id, section_key, title_en, title_bn, is_visible, sort_order, config_json
     FROM homepage_sections
@@ -98,6 +105,11 @@ async function main() {
     ORDER BY sort_order ASC, id ASC
   `).all();
 
+  const allQuickCards = db.prepare(`
+    SELECT * FROM homepage_quick_cards
+    ORDER BY card_type ASC, sort_order ASC, id ASC
+  `).all();
+
   const sections = db.prepare(`
     SELECT s.*,
       (SELECT COUNT(*) FROM contents c WHERE c.section_slug = s.slug AND c.status = 'published' AND c.deleted_at IS NULL) as published_count
@@ -107,8 +119,33 @@ async function main() {
   `).all();
 
   const categories = db.prepare(`
-    SELECT * FROM content_categories ORDER BY name_en ASC
+    SELECT * FROM content_categories ORDER BY section_slug ASC, name_en ASC
   `).all();
+
+  const tags = db.prepare(`
+    SELECT * FROM content_tags ORDER BY name_en ASC
+  `).all();
+
+  const media = db.prepare(`
+    SELECT * FROM media ORDER BY id DESC
+  `).all();
+
+  const roles = db.prepare('SELECT * FROM roles ORDER BY id ASC').all().map((r: Record<string, unknown>) => ({
+    ...r,
+    permissions: JSON.parse(String(r.permissions_json || '{"modules":[],"actions":[]}')),
+  }));
+
+  const users = db.prepare(`
+    SELECT u.id, u.username, u.full_name, u.email, u.role_id, u.assigned_panchayat, u.assigned_institution,
+           u.avatar_url, u.is_active, u.created_at,
+           r.slug as role_slug, r.name_en as role_name_en, r.name_bn as role_name_bn, r.accent_color,
+           r.description as role_description, r.permissions_json
+    FROM users u JOIN roles r ON r.id = u.role_id
+    ORDER BY u.id ASC
+  `).all().map((u: Record<string, unknown>) => ({
+    ...u,
+    permissions: JSON.parse(String(u.permissions_json || '{"modules":[],"actions":[]}')),
+  }));
 
   const allContents = db.prepare(`
     SELECT c.*, m.url as cover_url, m.alt_text as cover_alt,
@@ -132,21 +169,20 @@ async function main() {
     ORDER BY e.is_featured DESC, e.start_datetime ASC
   `).all().map(hydrateEventRow);
 
+  const popups = db.prepare(`
+    SELECT p.*, m.url as image_url
+    FROM homepage_popups p
+    LEFT JOIN media m ON m.id = p.media_id
+    ORDER BY p.id DESC
+  `).all();
+
   const latestNews = allContents.filter((c: Record<string, unknown>) => c.section_slug === 'news-announcements').slice(0, 6);
   const notices = allContents.filter((c: Record<string, unknown>) => c.section_slug === 'notices-circulars').slice(0, 6);
   const upcomingEvents = allEvents.filter((e: Record<string, unknown>) => e.event_status === 'Upcoming' || e.event_status === 'Ongoing').slice(0, 4);
   const aboutSummary = allContents.find((c: Record<string, unknown>) => c.section_slug === 'about-balagarh') || null;
   const photoGallery = allContents.filter((c: Record<string, unknown>) => c.section_slug === 'photo-gallery').slice(0, 2);
   const videoGallery = allContents.filter((c: Record<string, unknown>) => c.section_slug === 'video-gallery').slice(0, 2);
-
-  const activePopup = db.prepare(`
-    SELECT p.*, m.url as image_url
-    FROM homepage_popups p
-    LEFT JOIN media m ON m.id = p.media_id
-    WHERE p.is_active = 1
-    ORDER BY p.id DESC
-    LIMIT 1
-  `).get() || null;
+  const activePopup = popups.find((p: Record<string, unknown>) => p.is_active === 1) || null;
 
   const snapshot = {
     bootstrap: {
@@ -164,8 +200,15 @@ async function main() {
     },
     sections,
     categories,
+    tags,
+    media,
+    roles,
+    users,
     contents: allContents,
     events: allEvents,
+    banners: allBanners,
+    quickCards: allQuickCards,
+    popups,
   };
 
   const json = JSON.stringify(snapshot);
@@ -173,7 +216,7 @@ async function main() {
   fs.mkdirSync(path.dirname(srcOut), { recursive: true });
   fs.writeFileSync(publicOut, json, 'utf8');
   fs.writeFileSync(srcOut, json, 'utf8');
-  console.log(`Exported static portal snapshot (${allContents.length} contents, ${allEvents.length} events, ${sections.length} sections)`);
+  console.log(`Exported static portal snapshot (${allContents.length} contents, ${allEvents.length} events, ${sections.length} sections, ${media.length} media, ${users.length} users)`);
 }
 
 main().catch((err) => {

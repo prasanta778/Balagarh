@@ -43,13 +43,12 @@ export const AdminLogin: React.FC<{
 
   useEffect(() => {
     apiFetch<{ users: DemoUserSummary[] }>('/api/auth/demo-users')
-      .then((res) => setDemoUsers(res.users))
-      .catch(() => {
-        setError(
-          lang === 'bn'
-            ? 'সার্ভার API সংযোগ পাওয়া যায়নি। অ্যাডমিন প্যানেল ব্যবহার করতে Node.js সার্ভার সহ ডিপ্লয় করুন।'
-            : 'CMS Backend API is unreachable on this host. Ensure Node 22 serverless (/api) or Node server is active for Admin login.'
-        );
+      .then((res) => {
+        setDemoUsers(res.users);
+        setError('');
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : 'Unable to load role accounts.');
       });
   }, [lang]);
 

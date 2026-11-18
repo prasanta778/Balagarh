@@ -123,20 +123,19 @@ export const MediaLibraryView: React.FC<MediaLibraryViewProps> = ({ lang, canUpl
       setFeedback({ type: 'ok', msg: `Deleted "${item.original_name}".` });
       loadMedia();
     } catch (err) {
-      // Check if 409 conflict by re-fetching or parsing
-      if (!force) {
-        const res = await fetch(`/api/admin/media/${item.id}`, {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('balagarh_cms_token') || ''}`,
-            'X-CSRF-Token': localStorage.getItem('balagarh_cms_csrf') || '',
-          },
-        });
-        if (res.status === 409) {
-          const data = await res.json();
-          setDeleteConflict({ media: item, usage: data.usage });
-          return;
-        }
+      const apiErr = err as Error & {
+        status?: number;
+        usage?: {
+          total: number;
+          contents: Array<{ title_en: string }>;
+          galleries: Array<{ title_en: string }>;
+          events: Array<{ title_en: string }>;
+          banners: Array<{ title_en: string }>;
+        };
+      };
+      if (!force && apiErr.status === 409 && apiErr.usage) {
+        setDeleteConflict({ media: item, usage: apiErr.usage });
+        return;
       }
       setFeedback({ type: 'err', msg: err instanceof Error ? err.message : 'Delete failed' });
     }

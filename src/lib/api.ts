@@ -1,4 +1,5 @@
 import type { UserRecord } from '../types/cms';
+import { localCmsFetch } from './localCms';
 
 let authToken = localStorage.getItem('balagarh_cms_token') || '';
 let csrfToken = localStorage.getItem('balagarh_cms_csrf') || '';
@@ -20,15 +21,30 @@ export function getAuthToken() {
 }
 
 async function ensureCsrfToken(): Promise<string> {
+  if (authToken.startsWith('local:')) return 'local-csrf-token';
   if (csrfToken) return csrfToken;
-  const res = await fetch('/api/auth/csrf');
-  const data = await res.json();
-  csrfToken = data.csrfToken || '';
-  localStorage.setItem('balagarh_cms_csrf', csrfToken);
-  return csrfToken;
+  try {
+    const res = await fetch('/api/auth/csrf');
+    const ct = (res.headers.get('content-type') || '').toLowerCase();
+    if (!res.ok || !ct.includes('application/json')) {
+      csrfToken = 'local-csrf-token';
+      return csrfToken;
+    }
+    const data = await res.json();
+    csrfToken = data.csrfToken || 'local-csrf-token';
+    localStorage.setItem('balagarh_cms_csrf', csrfToken);
+    return csrfToken;
+  } catch {
+    csrfToken = 'local-csrf-token';
+    return csrfToken;
+  }
 }
 
 export async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
+  if (authToken.startsWith('local:')) {
+    return localCmsFetch<T>(url, options);
+  }
+
   const method = (options.method || 'GET').toUpperCase();
   const headers = new Headers(options.headers || {});
   if (authToken) {
@@ -42,23 +58,49 @@ export async function apiFetch<T>(url: string, options: RequestInit = {}): Promi
     headers.set('Content-Type', 'application/json');
   }
 
-  let res = await fetch(url, { ...options, headers });
-  if (res.status === 403 && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+  let res: Response;
+  try {
+    res = await fetch(url, { ...options, headers });
+  } catch {
+    return localCmsFetch<T>(url, options);
+  }
+
+  let contentType = (res.headers.get('content-type') || '').toLowerCase();
+
+  if (res.status === 403 && contentType.includes('application/json') && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
     // Refresh CSRF token once if server restarted
     csrfToken = '';
     const fresh = await ensureCsrfToken();
     if (fresh) headers.set('X-CSRF-Token', fresh);
-    res = await fetch(url, { ...options, headers });
+    try {
+      res = await fetch(url, { ...options, headers });
+      contentType = (res.headers.get('content-type') || '').toLowerCase();
+    } catch {
+      return localCmsFetch<T>(url, options);
+    }
   }
 
-  const contentType = (res.headers.get('content-type') || '').toLowerCase();
-  if (!contentType.includes('application/json')) {
-    throw new Error(`Unexpected non-JSON response (${res.status})`);
+  const isApiMissing =
+    !contentType.includes('application/json') ||
+    res.status === 502 ||
+    res.status === 503 ||
+    res.status === 504 ||
+    (res.status === 404 &&
+      (url.startsWith('/api/auth/') || url.startsWith('/api/admin/') || url === '/api/public/bootstrap'));
+
+  if (isApiMissing) {
+    return localCmsFetch<T>(url, options);
   }
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(data.error || `Request failed (${res.status})`);
+    const err = new Error(data.error || `Request failed (${res.status})`) as Error & {
+      status?: number;
+      usage?: unknown;
+    };
+    err.status = res.status;
+    if (data.usage !== undefined) err.usage = data.usage;
+    throw err;
   }
   return data as T;
 }
